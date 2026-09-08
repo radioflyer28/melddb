@@ -20,6 +20,7 @@ jobs:
       - run: uv run --extra test pytest
       - run: uv run python -c "import sqlite3; print(sqlite3.sqlite_version)"
       - run: uv run python examples/workflows.py .demo
+      - run: uv run python examples/query_crud.py .demo/queries
 
   postgres-proof:
     runs-on: ubuntu-latest

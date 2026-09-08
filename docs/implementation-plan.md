@@ -61,8 +61,8 @@ does not close a slice or gate.
 | S02 atomic mixed workflow | S01 | Injected rollback after document/link/row tested on both adapters |
 | S03 PostgreSQL proof | S02 | 17/18 shared tests now run locally; CI jobs and matrix added; harden edge cases as shared contract expands |
 | S04 comparative product proof | S03 | Gate A passed for the documented workload: 27 shared comparison tests, complete setup/helper metrics; see gate-a.md |
-| S05 document queries | S04 Gate A | Prototype and fixtures exist; exhaustive predicate/ordering/pagination conformance pending |
-| S06 relational CRUD | S04 Gate A | Prototype exists; full type/projection/boundary conformance pending |
+| S05 document queries | S04 Gate A | Implemented and shared conformance added: operators, ordering, paging, object paths, conditional writes and numeric boundaries; see queries-and-crud.md |
+| S06 relational CRUD | S04 Gate A | Implemented and shared conformance added: all scalar types, projection, CRUD, validation and existing SQL; executable address-book example |
 | S07 traversal | S05/S06 | BFS/properties/delete policies implemented; expand graph property tests and scale evidence |
 | S08 schema evolution | S05/S06/S07 | Constraint/checksum/crash tests exist; complete raw-SQL and rollback validation before Gate B |
 | S09 inspection/recovery | S08 | CLI/backup implemented; structural verification requires deeper schema-drift coverage |
@@ -119,4 +119,4 @@ edges, callbacks, inheritance, lazy loading, tracked models, identity maps,
 automatic flushing and automatic schema diffing are outside this milestone.
 
 Add capabilities only when they simplify demonstrated workflows without hidden
-persistence behavior. Next priority: S05/S06 complete query and relational conformance.
+persistence behavior. Next priority: S07 traversal conformance and scale validation.

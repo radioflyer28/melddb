@@ -61,6 +61,12 @@ class Backend:
                     raise UnsupportedError("Install melddb[postgres]") from exc
                 self.conn = psycopg.connect(target, autocommit=True)
                 self.conn.execute("SELECT set_config('lock_timeout',%s,false)", (f"{int(timeout * 1000)}ms",))
+                import json
+
+                from psycopg.types.json import set_json_loads
+
+                from .values import portable_json_integer
+                set_json_loads(lambda data: json.loads(data, parse_int=portable_json_integer), self.conn)
             else:
                 if sqlite3.sqlite_version_info < (3, 38):
                     raise UnsupportedError("SQLite 3.38+ is required")

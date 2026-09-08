@@ -16,9 +16,12 @@ def json_expr(path, pg=False, column="body"):
     path = path_parts(path)
     col = quote(column)
     if pg:
-        args = ",".join(literal(key) for key in path)
-        value = f"jsonb_extract_path({col},{args})"
-        scalar = f"jsonb_extract_path_text({col},{args})"
+        args = [literal(key) for key in path]
+        parents = [col] + [f"jsonb_extract_path({col},{','.join(args[:i])})"
+                           for i in range(1, len(args))]
+        guard = " AND ".join(f"jsonb_typeof({parent})='object'" for parent in parents)
+        value = f"(CASE WHEN {guard} THEN jsonb_extract_path({col},{','.join(args)}) END)"
+        scalar = f"({value} #>> '{{}}')"
         return value, f"jsonb_typeof({value})", scalar
     jp = "$" + "".join("." + json.dumps(key, ensure_ascii=False) for key in path)
     value = f"json_extract({col},{literal(jp)})"
@@ -83,12 +86,17 @@ def compile_predicate(pred, spec, pg=False):
     from .storage import validate_column
     kind = "text" if path[0] == "id" else spec["columns"][path[0]]
     validate_column(kind, v)
+    if kind == "float":
+        v = float(v)
+    if kind == "text":
+        value += ' COLLATE "C"' if pg else ' COLLATE BINARY'
     return f"COALESCE({value} {operator} ?,FALSE)", [v]
 
 
 def ordering(path, spec, pg=False, descending=False):
+    identity = 'id COLLATE "C"' if pg else 'id COLLATE BINARY'
     if path is None:
-        return '"id" ASC'
+        return f'{identity} ASC'
     path = path.path if hasattr(path, "path") else (path,) if isinstance(path, str) else path
     path = path_parts(path)
     direction = "DESC" if descending else "ASC"
@@ -98,7 +106,7 @@ def ordering(path, spec, pg=False, descending=False):
         val = quote(path[0])
         collation = (' COLLATE "C"' if pg else ' COLLATE BINARY') if (
             path[0] == "id" or spec["columns"].get(path[0]) == "text") else ""
-        return f"({val} IS NOT NULL) ASC, {val}{collation} {direction}, id ASC"
+        return f"({val} IS NOT NULL) ASC, {val}{collation} {direction}, {identity} ASC"
     value, typ, scalar = json_expr(path, pg)
     # Type ranks never reverse: missing, null, boolean, number, string, array, object.
     pairs = (("null", 1), ("boolean", 2), ("number", 3), ("string", 4), ("array", 5),
@@ -113,4 +121,4 @@ def ordering(path, spec, pg=False, descending=False):
         num = f"CASE WHEN {typ} IN ('integer','real') THEN {value} END"
         boolean = f"CASE WHEN {typ} IN ('true','false') THEN {value} END"
         string = f"CASE WHEN {typ}='text' THEN {value} END COLLATE BINARY"
-    return f"{rank} ASC, {boolean} {direction}, {num} {direction}, {string} {direction}, id ASC"
+    return f"{rank} ASC, {boolean} {direction}, {num} {direction}, {string} {direction}, {identity} ASC"

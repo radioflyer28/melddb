@@ -16,6 +16,17 @@ def text(value):
     return value
 
 
+def portable_json_integer(value):
+    """JSONB may render a finite exponent-form float as a large integer literal."""
+    integer = int(value)
+    if abs(integer) <= 2**53-1:
+        return integer
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValidationError("JSON number exceeds finite floating-point range")
+    return number
+
+
 def json_value(value):
     if value is None or type(value) is bool:
         return

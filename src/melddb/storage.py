@@ -17,6 +17,14 @@ def validate_column(kind, value):
         raise ValidationError(f"Unsupported column type {kind}")
     if value is None:
         return
+    if kind == "float":
+        try:
+            valid_float = type(value) in (int, float) and math.isfinite(float(value))
+        except OverflowError:
+            valid_float = False
+        if not valid_float:
+            raise ValidationError("Expected a finite floating-point value")
+        return
     valid = ((kind == "text" and isinstance(value, str)) or
              (kind == "integer" and type(value) is int and -(2**63) <= value < 2**63) or
              (kind == "float" and type(value) in (int, float) and math.isfinite(value)) or
@@ -73,23 +81,31 @@ class Store:
     def find(self, where=None, *, order_by=None, descending=False, limit=100, offset=0,
              columns=None):
         with self.scope._operation():
-            if type(limit) is not int or not 1 <= limit <= 10000 or type(offset) is not int or offset < 0:
-                raise ValidationError("limit must be 1..10000 and offset nonnegative")
+            if (type(limit) is not int or not 1 <= limit <= 10000 or
+                    type(offset) is not int or not 0 <= offset <= 2**63-1):
+                raise ValidationError("limit must be 1..10000 and offset 0..2**63-1")
+            if type(descending) is not bool:
+                raise ValidationError("descending must be a boolean")
+            absent = False
             try:
                 spec = self._spec()
             except NotFoundError:
                 if self.kind == "collection":
-                    return []
-                raise
+                    spec = {"op": "collection", "name": self.name}
+                    absent = True
+                else:
+                    raise
             expr, params = compile_predicate(where, spec, self.db._backend.pg)
             order = ordering(order_by, spec, self.db._backend.pg, descending)
             projection = "*"
             if columns is not None:
-                if self.kind != "table" or not columns or any(
-                    c not in {"id", *spec["columns"]} for c in columns
+                if self.kind != "table" or not isinstance(columns, (list, tuple)) or not columns or any(
+                    not isinstance(c, str) or c not in {"id", *spec["columns"]} for c in columns
                 ):
                     raise ValidationError("Invalid projection")
                 projection = ",".join(quote(c) for c in columns)
+            if absent:
+                return []
             rows = self.db._backend.execute(
                 f"SELECT {projection} FROM {self.sqlname} WHERE {expr} ORDER BY {order} LIMIT ? OFFSET ?",
                 (*params, limit, offset))[0]
@@ -98,14 +114,22 @@ class Store:
     def delete(self, ident, *, expected_version=None):
         with self.scope._operation(write=True):
             text(ident)
-            self._spec()
             params = [ident]
             condition = "id=?"
             if expected_version is not None:
-                if self.kind != "collection" or type(expected_version) is not int or expected_version < 1:
+                if (self.kind != "collection" or type(expected_version) is not int or
+                        not 1 <= expected_version <= 2**63-1):
                     raise ValidationError("Expected a positive document version")
                 condition += " AND version=?"
                 params.append(expected_version)
+            try:
+                self._spec()
+            except NotFoundError:
+                if self.kind != "collection":
+                    raise
+                if expected_version is not None:
+                    raise ConflictError("Document missing or version changed") from None
+                return False
             rows, _ = self.db._backend.execute(
                 f"DELETE FROM {self.sqlname} WHERE {condition} RETURNING id", params)
             if not rows and expected_version is not None:
@@ -134,21 +158,28 @@ class Collection(Store):
     def replace(self, ident, body, *, expected_version=None):
         with self.scope._operation(write=True):
             text(ident)
-            spec = self._spec()
             body = encode(body, object_only=True)
-            condition = "id=?"
+            condition = "id=? AND version<9223372036854775807"
             params = [body, ident]
             if expected_version is not None:
-                if type(expected_version) is not int or expected_version < 1:
+                if type(expected_version) is not int or not 1 <= expected_version <= 2**63-1:
                     raise ValidationError("Expected a positive document version")
                 condition += " AND version=?"
                 params.append(expected_version)
+            try:
+                spec = self._spec()
+            except NotFoundError:
+                if expected_version is not None:
+                    raise ConflictError("Document missing or version changed") from None
+                raise
             rows = self.db._backend.execute(
                 f"UPDATE {self.sqlname} SET body=?,version=version+1 WHERE {condition} RETURNING *",
                 params)[0]
             if not rows:
                 if expected_version is not None:
                     raise ConflictError("Document missing or version changed")
+                if self.db._backend.execute(f"SELECT id FROM {self.sqlname} WHERE id=?", (ident,))[0]:
+                    raise ConflictError("Document version counter exhausted")
                 raise NotFoundError(ident)
             return self._decode(rows[0], spec)
 
@@ -168,7 +199,8 @@ class Table(Store):
             self._values(row, spec)
             ident = str(uuid.uuid4()) if id is None else text(id)
             cols = ["id", *row]
-            values = [ident, *row.values()]
+            values = [ident, *(float(v) if spec["columns"][c] == "float" and v is not None else v
+                               for c, v in row.items())]
             rows = self.db._backend.execute(
                 f"INSERT INTO {self.sqlname} ({','.join(quote(c) for c in cols)}) "
                 f"VALUES ({','.join('?' for _ in cols)}) RETURNING *", values)[0]
@@ -183,7 +215,8 @@ class Table(Store):
                 raise ValidationError("An update requires at least one column")
             rows = self.db._backend.execute(
                 f"UPDATE {self.sqlname} SET {','.join(quote(c)+'=?' for c in changes)} "
-                "WHERE id=? RETURNING *", (*changes.values(), ident))[0]
+                "WHERE id=? RETURNING *", (*(float(v) if spec["columns"][c] == "float" and v is not None else v
+                                            for c, v in changes.items()), ident))[0]
             if not rows:
                 raise NotFoundError(ident)
             return self._decode(rows[0], spec)

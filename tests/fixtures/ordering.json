@@ -1,0 +1,18 @@
+{
+  "records": [
+    {"id": "m", "body": {}},
+    {"id": "n", "body": {"v": null}},
+    {"id": "f", "body": {"v": false}},
+    {"id": "t", "body": {"v": true}},
+    {"id": "zero", "body": {"v": 0}},
+    {"id": "one", "body": {"v": 1.5}},
+    {"id": "Z", "body": {"v": "same"}},
+    {"id": "A", "body": {"v": "same"}},
+    {"id": "a", "body": {"v": "same"}},
+    {"id": "upper", "body": {"v": "Alpha"}},
+    {"id": "array", "body": {"v": []}},
+    {"id": "object", "body": {"v": {}}}
+  ],
+  "ascending": ["m", "n", "f", "t", "zero", "one", "upper", "A", "Z", "a", "array", "object"],
+  "descending": ["m", "n", "t", "f", "one", "zero", "A", "Z", "a", "upper", "array", "object"]
+}

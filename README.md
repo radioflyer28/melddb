@@ -70,3 +70,5 @@ PostgreSQL boundary, with [local validation evidence](docs/validation.md).
 The [Gate A comparison](docs/gate-a.md) measures full application setup and
 helpers against sqlite3 and SQLAlchemy Core using identical correctness tests.
 Passing prototype tests does not yet qualify SQLite as a supported release.
+See [queries and CRUD](docs/queries-and-crud.md) for predicate semantics,
+ordering, pagination, managed types and conditional-write behavior.

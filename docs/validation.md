@@ -47,6 +47,31 @@ across MeldDB, sqlite3 helpers and SQLAlchemy Core. The full SQLite-only run
 after S04 passed 71 tests with one expected PostgreSQL-only skip; Ruff passed.
 See gate-a.md for the scoped Gate A decision and gate-a-results.json for measurements.
 
+## S05/S06 checkpoint
+
+Full suite on the same Windows/Python 3.12 host, using the isolated PostgreSQL
+17.11 and 18.6 services: **217 passed, 2 expected skips per run**. Each run also
+includes SQLite. Ruff passed and examples/query_crud.py completed successfully.
+The skips remain the documented backend-specific evolution/boundary tests.
+
+The new shared suite covers all scalar comparison operators, Boolean
+combinations, empty/bounded membership, object-only paths through mixed
+objects/arrays, escaped keys, deterministic ascending/descending pagination,
+invalid options before storage exists, replace/delete/conflict semantics,
+version exhaustion, every relational type, atomic invalid writes, projections,
+null handling, reference-model predicates and existing parameterized SQL with
+WITH/RETURNING. Finite-float boundaries include subnormal and maximum values.
+
+Corrections include PostgreSQL object-path guards and explicit ID collation,
+connection-local JSONB numeric decoding, finite float-column normalization,
+strict query option/version bounds, and consistent missing-document behavior.
+No physical schema change was required; storage remains format 2.
+
+PostgreSQL JSON adaptation uses the documented per-connection context:
+[Psycopg JSON adaptation](https://www.psycopg.org/psycopg3/docs/basic/adapt.html#json-adaptation).
+The optional dependency remains outside the core installation. These local
+results do not substitute for the outstanding complete OS/Python CI matrix.
+
 Container images used:
 
 - postgres:17 — sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675
