@@ -4,7 +4,7 @@ import json
 from .backend import quote
 from .database import physical
 from .errors import TraversalLimitError, ValidationError
-from .values import Ref, encode
+from .values import Ref, encode, text
 
 
 class Relationship:
@@ -18,7 +18,7 @@ class Relationship:
     def _ref(self, ref, expected):
         if not isinstance(ref, Ref) or ref.storage != expected or ref._owner != self.db._owner:
             raise ValidationError("Reference belongs to another endpoint or database handle")
-        return ref.id
+        return text(ref.id)
 
     def connect(self, source, target, properties=None):
         with self.scope._operation(write=True):
@@ -52,10 +52,12 @@ class Relationship:
         with self.scope._operation():
             spec = self._spec()
             src, dst, start, _ = self._direction(spec, direction)
-            if type(limit) is not int or not 1 <= limit <= 10000 or type(offset) is not int or offset < 0:
+            if (type(limit) is not int or not 1 <= limit <= 10000 or
+                    type(offset) is not int or not 0 <= offset <= 2**63-1):
                 raise ValidationError("Invalid pagination")
+            collation = 'COLLATE "C"' if self.db._backend.pg else 'COLLATE BINARY'
             rows = self.db._backend.execute(
-                f"SELECT * FROM {self.sqlname} WHERE {src}=? ORDER BY {dst} LIMIT ? OFFSET ?",
+                f"SELECT * FROM {self.sqlname} WHERE {src}=? ORDER BY {dst} {collation} LIMIT ? OFFSET ?",
                 (self._ref(ref, start), limit, offset))[0]
             for row in rows:
                 if isinstance(row["properties"], str):
@@ -75,10 +77,11 @@ class Relationship:
             spec = self._spec()
             src, dst, start, target = self._direction(spec, direction)
             origin = self._ref(ref, start)
-            if any(type(v) is not int or v < 1 for v in (depth, max_nodes, max_edges)):
-                raise ValidationError("Traversal depth and budgets must be positive integers")
+            if any(type(v) is not int or not 1 <= v <= 2**63-2 for v in (depth, max_nodes, max_edges)):
+                raise ValidationError("Traversal depth and budgets must be integers in 1..2**63-2")
             # A homogeneous relation can recurse; a heterogeneous one naturally ends after one hop.
             seen, frontier, found, examined = {origin} if start == target else set(), [origin], {}, 0
+            origin_count = int(start != target)
             for level in range(1, depth + 1):
                 next_frontier = []
                 for offset in range(0, len(frontier), 400):
@@ -95,7 +98,7 @@ class Relationship:
                         if ident in seen:
                             continue
                         seen.add(ident)
-                        if len(seen) > max_nodes:
+                        if len(seen) + origin_count > max_nodes:
                             raise TraversalLimitError("Visited-node budget exceeded")
                         found[ident] = level
                         next_frontier.append(ident)

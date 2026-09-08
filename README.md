@@ -72,3 +72,5 @@ helpers against sqlite3 and SQLAlchemy Core using identical correctness tests.
 Passing prototype tests does not yet qualify SQLite as a supported release.
 See [queries and CRUD](docs/queries-and-crud.md) for predicate semantics,
 ordering, pagination, managed types and conditional-write behavior.
+See [relationships](docs/relationships.md) for directed links, traversal budgets,
+deletion policies and the executable package-dependency example.

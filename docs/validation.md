@@ -79,3 +79,35 @@ Container images used:
 
 Images were used as test services with localhost-only ports and disposable
 storage. No application database was modified by these runs.
+
+## S07 checkpoint
+
+Full SQLite plus PostgreSQL suites passed against both 17.11 and 18.6:
+**281 passed, 2 expected skips per run** on the Windows/Python 3.12 host above.
+Ruff and the executable dependency example passed. Local service URLs used
+`127.0.0.1` and `connect_timeout=10` after an initial `localhost` connection
+stalled; that interrupted run is not counted as successful evidence.
+
+The 64 added shared cases cover every collection/table endpoint combination
+with both deletion policies and endpoint deletion directions, equal IDs across
+stores, detached properties, duplicate/invalid writes, transaction poisoning,
+minimum depths, cycles/self-links, exact and exceeded budgets, pagination,
+batched wide frontiers, and a concurrent deletion between discovery and record
+retrieval. Hypothesis compares both traversal directions with an in-memory BFS.
+
+Corrections validate reference IDs, bound pagination/traversal integers for both
+drivers, explicitly collate edge listing IDs, and count the starting record in
+the node budget for heterogeneous relationships as well as homogeneous ones.
+No physical schema change or runtime dependency was introduced.
+
+The 10,000-document/50,000-edge SQLite workload passes with identical records
+and minimum depths versus sqlite3. Both use 51 batched SELECTs; the MeldDB
+traversal issues 57 total SQL statements. Exact edge overflow and integrity
+checks pass. See [relationships](relationships.md) and the machine-readable
+[scale report](s07-scale-results.json) for timings, hardware and limitations.
+Reproduce with `uv run python validation/traversal_scale.py`.
+
+CI now runs the dependency example in its OS/Python matrix and the scale
+workload in its Linux validation job. These edits are not evidence of executed
+CI or complete release qualification. S08/Gate B remain next; UUIDv7 evaluation
+is tracked separately before the API freeze.

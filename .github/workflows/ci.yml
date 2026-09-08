@@ -21,6 +21,7 @@ jobs:
       - run: uv run python -c "import sqlite3; print(sqlite3.sqlite_version)"
       - run: uv run python examples/workflows.py .demo
       - run: uv run python examples/query_crud.py .demo/queries
+      - run: uv run python examples/dependencies.py
 
   postgres-proof:
     runs-on: ubuntu-latest
@@ -59,4 +60,5 @@ jobs:
           python-version: "3.12"
       - run: uv run --extra test ruff check .
       - run: uv run --extra test python validation/comparison.py
+      - run: uv run --extra test python validation/traversal_scale.py
       - run: uv build

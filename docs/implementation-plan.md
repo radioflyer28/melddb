@@ -63,7 +63,7 @@ does not close a slice or gate.
 | S04 comparative product proof | S03 | Gate A passed for the documented workload: 27 shared comparison tests, complete setup/helper metrics; see gate-a.md |
 | S05 document queries | S04 Gate A | Implemented and shared conformance added: operators, ordering, paging, object paths, conditional writes and numeric boundaries; see queries-and-crud.md |
 | S06 relational CRUD | S04 Gate A | Implemented and shared conformance added: all scalar types, projection, CRUD, validation and existing SQL; executable address-book example |
-| S07 traversal | S05/S06 | BFS/properties/delete policies implemented; expand graph property tests and scale evidence |
+| S07 traversal | S05/S06 | Shared graph/property tests, snapshot checks and 10,000-document/50,000-edge driver comparison pass; see relationships.md and s07-scale-results.json |
 | S08 schema evolution | S05/S06/S07 | Constraint/checksum/crash tests exist; complete raw-SQL and rollback validation before Gate B |
 | S09 inspection/recovery | S08 | CLI/backup implemented; structural verification requires deeper schema-drift coverage |
 | S10 logical portability | S09/S03 | SQLite and PostgreSQL mixed import proof, TS reader exist; adversarial artifacts and full format documentation pending |
@@ -84,6 +84,8 @@ This does not establish full SDK equivalence, performance or production usabilit
 
 After S08, freeze v0.1 only once lifecycle, query, migration, raw-SQL, and backend
 proof tests pass. All current APIs remain experimental. Gate B is OPEN.
+Evaluate UUIDv7 for SDK-generated record IDs before this freeze, including
+Python 3.12–3.14 support and dependency-free generation. Existing IDs must remain valid.
 
 ### Gate C — release qualification
 
@@ -119,4 +121,4 @@ edges, callbacks, inheritance, lazy loading, tracked models, identity maps,
 automatic flushing and automatic schema diffing are outside this milestone.
 
 Add capabilities only when they simplify demonstrated workflows without hidden
-persistence behavior. Next priority: S07 traversal conformance and scale validation.
+persistence behavior. Next priority: S08 schema evolution and Gate B validation.
