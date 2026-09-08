@@ -67,7 +67,7 @@ does not close a slice or gate.
 | S08 schema evolution | S05/S06/S07 | Validated declaration preflight, structured violations, raw-SQL enforcement, write-safe installation, checksum/order rollback and interrupted evolution/retry; see migrations.md |
 | S09 inspection/recovery | S08 | Structural/constraint/checksum checks, read-only CLI, validated standalone backups and publication-crash recovery tested; see inspection-and-recovery.md |
 | S10 logical portability | S09/S03 | Strict artifact validation, atomic import/recovery, shared int64/binary fixture, PostgreSQL round trip and lossless TypeScript checksum reader tested; see logical-format.md |
-| S11 release qualification | S01–S10 | Local alpha artifacts only; actual OS/Python matrix runs, installation, performance, docs and evidence pending |
+| S11 release qualification | S01–S10 | v0.1.0rc1 wheel/sdist pass isolated Windows/Linux 3.12–3.14 installs, examples and suites; capability rejection and performance fixes verified; macOS qualification remains open |
 
 ### Gate A — product value
 
@@ -83,9 +83,10 @@ This does not establish full SDK equivalence, performance or production usabilit
 ### Gate B — API freeze
 
 After S08, freeze v0.1 only once lifecycle, query, migration, raw-SQL, and backend
-proof tests pass. All current APIs remain experimental. Gate B is OPEN.
-Evaluate UUIDv7 for SDK-generated record IDs before this freeze, including
-Python 3.12–3.14 support and dependency-free generation. Existing IDs must remain valid.
+proof tests pass. Gate B PASSED for the v0.1.0rc1 API after final shared conformance,
+UUIDv7 resolution and capability-boundary review. Release support still requires Gate C.
+UUIDv7 is selected for generated record IDs with one dependency-free implementation
+on Python 3.12–3.14. Existing text IDs remain valid. See release-qualification.md.
 
 ### Gate C — release qualification
 
@@ -121,6 +122,5 @@ edges, callbacks, inheritance, lazy loading, tracked models, identity maps,
 automatic flushing and automatic schema diffing are outside this milestone.
 
 Add capabilities only when they simplify demonstrated workflows without hidden
-persistence behavior. Next priority: resolve the UUIDv7 decision and review Gate B,
-then S11 release qualification and assembled-system evidence. S08's passing migration
-tests alone do not freeze the public API.
+persistence behavior. Next priority: obtain macOS 3.12–3.14 CI qualification and
+review the release candidate before closing Gate C. No package has been published.

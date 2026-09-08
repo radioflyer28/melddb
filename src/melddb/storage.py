@@ -1,11 +1,11 @@
 """Plain-value collections and deliberately modest relational CRUD."""
 import json
 import math
-import uuid
 
 from .backend import quote
 from .database import physical
 from .errors import ConflictError, NotFoundError, ValidationError
+from .identifiers import new_id
 from .query import compile_predicate, ordering
 from .values import Ref, encode, text
 
@@ -143,7 +143,7 @@ class Collection(Store):
     def insert(self, body, *, id=None):
         with self.scope._operation(write=True):
             body = encode(body, object_only=True)
-            ident = str(uuid.uuid4()) if id is None else text(id)
+            ident = new_id() if id is None else text(id)
             try:
                 spec = self._spec()
             except NotFoundError:
@@ -197,7 +197,7 @@ class Table(Store):
         with self.scope._operation(write=True):
             spec = self._spec()
             self._values(row, spec)
-            ident = str(uuid.uuid4()) if id is None else text(id)
+            ident = new_id() if id is None else text(id)
             cols = ["id", *row]
             values = [ident, *(float(v) if spec["columns"][c] == "float" and v is not None else v
                                for c, v in row.items())]

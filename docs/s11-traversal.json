@@ -1,0 +1,31 @@
+{
+  "environment": {
+    "python": "3.12.10",
+    "sqlite": "3.49.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel"
+  },
+  "fixture": {
+    "documents": 10000,
+    "edges": 50000,
+    "depth": 2,
+    "returned_records": 9999
+  },
+  "melddb": {
+    "insert_seconds": 0.953836799999408,
+    "traversal_seconds": 0.06796480000048177,
+    "traversal_sql_statements": 57,
+    "batched_selects": 51
+  },
+  "driver": {
+    "insert_seconds": 0.11352049999914016,
+    "traversal_seconds": 0.0424007999990863,
+    "batched_selects": 51
+  },
+  "checks": {
+    "same_records_and_depths": true,
+    "edge_budget_overflow_raises": true,
+    "integrity": true
+  },
+  "scope": "Single local sample; data generation/schema setup excluded. MeldDB per-record API in one transaction versus sqlite3 executemany. Driver has fewer checks. Both traversals batch 400 IDs and fetch document bodies. Not a universal latency guarantee."
+}

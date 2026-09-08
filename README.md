@@ -8,7 +8,7 @@ explicit**. MeldDB does not use model base classes, identity maps, automatic
 flushing, lazy loading, or tracked objects.
 
 > [!NOTE]
-> MeldDB is an early alpha. SQLite is the primary backend. PostgreSQL support
+> MeldDB is an unqualified release candidate. SQLite is the primary backend. PostgreSQL support
 > is an experimental portability proof and requires the `postgres` extra.
 
 ## Example
@@ -80,3 +80,5 @@ See [inspection and recovery](docs/inspection-and-recovery.md) for structural
 checks, the read-only CLI and validated backup restoration.
 See [logical format and portability](docs/logical-format.md) for validated
 transfer, exact int64/binary encodings, exclusions and the TypeScript proof reader.
+See [release qualification](docs/release-qualification.md) for UUIDv7 semantics,
+the required SQLite capability probe, artifact tests and remaining release gates.

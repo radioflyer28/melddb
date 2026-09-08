@@ -1,0 +1,25 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "results": [
+    {
+      "artifact": "melddb-0.1.0rc1-py3-none-any.whl",
+      "sha256": "2818522f860d65681f32b11c1b9e32a60f8277b3a06bf5df2e6f2d4720248216",
+      "python": "3.14.7",
+      "sqlite": "3.50.4",
+      "version": "0.1.0rc1",
+      "isolated_install": true,
+      "all_examples": true,
+      "installed_suite": "passed"
+    },
+    {
+      "artifact": "melddb-0.1.0rc1.tar.gz",
+      "sha256": "0db1679aa30b1d027dd581969ebcdf071c438beb45402c59d2345acd6970d073",
+      "python": "3.14.7",
+      "sqlite": "3.50.4",
+      "version": "0.1.0rc1",
+      "isolated_install": true,
+      "all_examples": true,
+      "installed_suite": "passed"
+    }
+  ]
+}

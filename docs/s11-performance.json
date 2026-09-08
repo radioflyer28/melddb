@@ -1,0 +1,28 @@
+{
+  "environment": {
+    "python": "3.12.10",
+    "sqlite": "3.49.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel"
+  },
+  "records_per_workload": 10000,
+  "seconds": {
+    "managed_document_insert": 0.31804250000095635,
+    "managed_100_indexed_lookups": 0.006595200000447221,
+    "managed_activity_batch": 0.2855485000000044,
+    "driver_document_insert": 0.049450200000137556,
+    "driver_100_indexed_lookups": 0.0006432999998651212,
+    "driver_activity_batch": 0.03154600000016217
+  },
+  "uuid_index_insertion": {
+    "uuid4": {
+      "seconds": 0.01713480000034906,
+      "pages": 249
+    },
+    "uuid7": {
+      "seconds": 0.01704050000080315,
+      "pages": 249
+    }
+  },
+  "scope": "Single local sample. Managed checked per-record API versus simpler sqlite3 executemany; one write transaction each. UUID insertion excludes generation. No universal latency claims."
+}

@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  UV_MANAGED_PYTHON: "true"
+
 jobs:
   test:
     strategy:
@@ -25,6 +28,12 @@ jobs:
       - run: uv run python examples/schema_evolution.py
       - run: uv run python examples/recovery.py
       - run: uv run python examples/logical_transfer.py
+      - run: uv build
+      - run: uv run python validation/qualify.py dist/melddb-0.1.0rc1-py3-none-any.whl dist/melddb-0.1.0rc1.tar.gz --output qualification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qualification-${{ matrix.os }}-${{ matrix.python }}
+          path: qualification.json
 
   postgres-proof:
     runs-on: ubuntu-latest
@@ -67,6 +76,7 @@ jobs:
       - run: uv run --extra test ruff check .
       - run: uv run --extra test python validation/comparison.py
       - run: uv run --extra test python validation/traversal_scale.py
+      - run: uv run python validation/release_performance.py
       - run: node compat/read-export.ts tests/fixtures/logical-export.json
       - run: uv run --extra test pytest tests/test_artifacts.py -k typescript
       - run: uv build

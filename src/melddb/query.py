@@ -72,6 +72,15 @@ def compile_predicate(pred, spec, pg=False):
         raise ValidationError("Ordered comparisons are numeric only")
     operator = {"eq": "=", "ne": "<>", "gt": ">", "gte": ">=", "lt": "<", "lte": "<="}[pred.op]
     if doc:
+        if not pg and pred.op == "eq":
+            # Match the managed partial expression index while keeping missing,
+            # null and non-scalars false (including under Boolean negation).
+            rank = f"CASE WHEN {typ} IN ('integer','real') THEN 'number' ELSE {typ} END"
+            expected = ("true" if v else "false") if type(v) is bool else (
+                "number" if type(v) in (int, float) else "text")
+            scalar_guard = f"{typ} IN ('text','integer','real','true','false')"
+            return (f"({typ} IS NOT NULL AND {scalar_guard} AND ({rank})=? AND {scalar}=?)",
+                    [expected, v])
         if type(v) is bool:
             guard = f"{typ}='boolean'" if pg else f"{typ} IN ('true','false')"
             expression = f"CAST({scalar} AS BOOLEAN)" if pg else scalar

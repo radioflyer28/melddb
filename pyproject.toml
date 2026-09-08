@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "melddb"
-version = "0.1.0a1"
+version = "0.1.0rc1"
 description = "Explicit transactional tables, documents, and relationships"
 requires-python = ">=3.12"
 readme = "README.md"

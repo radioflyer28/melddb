@@ -74,6 +74,16 @@ class Backend:
                 uri = Path(target).resolve().as_uri() + "?mode=ro" if readonly else str(target)
                 self.conn = sqlite3.connect(uri, timeout=timeout, autocommit=True,
                                             uri=readonly)
+                import json
+                # Version alone does not establish JSON path correctness. Some
+                # older distributions silently miss quoted keys, including in
+                # constraint triggers; reject them before changing configuration.
+                probe = json.dumps({'a"b': 1})
+                path = '$.' + json.dumps('a"b')
+                if self.conn.execute("SELECT json_extract(?,?)", (probe, path)).fetchone() != (1,):
+                    raise UnsupportedError(
+                        f"SQLite {sqlite3.sqlite_version} lacks required escaped JSON-key support; "
+                        "use a Python build with a newer SQLite library (3.49.1 is verified)")
                 self.conn.execute("PRAGMA foreign_keys=ON")
                 self.conn.execute("PRAGMA synchronous=FULL")
                 if not existed and not readonly:

@@ -222,3 +222,60 @@ Full hosted cutover and streaming/resource-budgeted ingestion are not claimed.
 S10 is complete; S11 release qualification and the pending Gate B review/UUIDv7
 decision remain outstanding. CI configuration is not evidence of executed
 cross-platform qualification.
+
+## S11 candidate checkpoint
+
+Candidate **0.1.0rc1** is built but not published or designated supported.
+The final SQLite plus PostgreSQL 17.11/18.6 suites each passed **407 tests with
+2 expected skips**. Ruff passed. Gate B's API review and UUID decision are complete;
+Gate C/S11 qualification remains open for macOS 3.12–3.14 evidence.
+
+Both the wheel and source distribution were installed with no dependencies in
+fresh environments, then all examples and the installed-package suite ran outside
+the checkout. These are twelve successful artifact/environment combinations:
+
+| Platform | Python | Loaded SQLite | Installed suite per artifact |
+| --- | --- | --- | --- |
+| Windows | 3.12.10 | 3.49.1 | 246 passed, 1 skipped |
+| Windows | 3.13.3 | 3.49.1 | 246 passed, 1 skipped |
+| Windows | 3.14.7 | 3.50.4 | 246 passed, 1 skipped |
+| Linux/WSL2 containers, uv-managed Python | 3.12.14 | 3.53.1 | 245 passed, 2 skipped |
+| Linux/WSL2 containers, uv-managed Python | 3.13.15 | 3.53.1 | 245 passed, 2 skipped |
+| Linux/WSL2 containers, uv-managed Python | 3.14.7 | 3.53.1 | 245 passed, 2 skipped |
+
+The shared PostgreSQL-only boundary case is skipped without PostgreSQL. Linux
+containers also skip the optional Node reader; it runs successfully in Windows
+and is configured as a separate CI proof. Test tooling included Pytest 9.1.1,
+SQLAlchemy 2.0.52, and Hypothesis 6.167.1 on Windows / 6.168.0 on Linux.
+See `s11-windows-*.json` and `s11-linux-*.json` for exact artifact SHA-256 values.
+
+Qualification initially failed on official image system SQLite 3.46.1 because
+quoted JSON paths silently failed, including constraint triggers. A new open-time
+capability probe rejects that runtime before configuring the connection. The
+passing Linux matrix uses uv-managed Python with SQLite 3.53.1, not that failing
+system library. This is a material limitation; SQLite 3.38 is a version floor
+plus required capabilities, not a claim that every later build is compatible.
+Container downloads retained TLS verification using the host's trusted public
+CA roots; certificates/caches were excluded from artifacts and version control.
+
+UUIDv7 defaults now use one stateless 74-random-bit implementation on all Python
+versions. Layout, collision sampling, clock rollback and old-ID compatibility
+tests pass. Clock grouping does not imply monotonic or commit order. The local
+UUIDv4/v7 10,000-row insertion sample had essentially identical time/page counts;
+no speedup is claimed. The decision and source references are documented in
+release-qualification.md.
+
+Performance checks exposed and fixed unused document expression indexes. An
+EXPLAIN assertion now requires an indexed SQLite equality plan. Recorded workloads
+cover 10,000 documents, 100 indexed lookups, 10,000 batched activity records and
+50,000 edges. See s11-performance.json and s11-traversal.json. They compare checked
+API calls with simpler driver baselines and make no universal latency promise.
+
+CI now qualifies installed artifacts and uploads per-platform reports, using
+uv-managed Python. No Git remote or macOS execution environment was available
+locally, so macOS jobs have not run. The repository must be connected to the
+chosen remote and those jobs must pass before Gate C closes. Current artifacts
+remain review candidates; publication requires a separate action.
+
+User elected to keep the repository local and pause at this checkpoint. macOS
+qualification remains intentionally pending; see next-session.md for resumption.
