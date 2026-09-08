@@ -7,6 +7,7 @@ from contextlib import contextmanager
 
 from .backend import Backend
 from .errors import (
+    MeldDBError,
     MigrationError,
     NotFoundError,
     OwnershipError,
@@ -176,8 +177,12 @@ class Database(Scope):
         migrations = []
         if be.exists(META):
             for row in be.execute(f"SELECT * FROM {META} ORDER BY name")[0]:
+                try:
+                    spec = json.loads(row["spec"])
+                except (ValueError, TypeError) as exc:
+                    raise MigrationError("Invalid managed schema JSON") from exc
                 objects.append({"name": row["name"], "physical": row["physical"],
-                                "schema": json.loads(row["spec"])})
+                                "schema": spec})
             migrations = be.execute(f"SELECT * FROM {MIGRATIONS} ORDER BY id")[0]
         owned = {obj["physical"] for obj in objects} | {META, MIGRATIONS, VERSION}
         return {"format": FORMAT_VERSION, "backend": "postgresql" if be.pg else "sqlite",
@@ -189,17 +194,19 @@ class Database(Scope):
             return self._check()
 
     def _check(self):
+        from .inspection import structural_errors
         self._verify_metadata()
         be = self._backend
         if be.pg:
             errors = []
         else:
-            errors = [r for r in be.execute("PRAGMA integrity_check")[0]
-                      if list(r.values()) != ["ok"]]
-            errors += be.execute("PRAGMA foreign_key_check")[0]
-        for obj in self._inspect()["objects"]:
-            if not be.exists(obj["physical"]):
-                errors.append({"missing_table": obj["physical"]})
+            errors = []
+            for statement in ("PRAGMA integrity_check", "PRAGMA foreign_key_check"):
+                try:
+                    errors += [r for r in be.execute(statement)[0] if list(r.values()) != ["ok"]]
+                except MeldDBError as exc:
+                    errors.append({"code": "integrity_error", "check": statement, "message": str(exc)})
+        errors += structural_errors(self)
         return {"ok": not errors, "errors": errors}
 
     def backup(self, destination):

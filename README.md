@@ -76,3 +76,5 @@ See [relationships](docs/relationships.md) for directed links, traversal budgets
 deletion policies and the executable package-dependency example.
 See [migrations](docs/migrations.md) for safe constraint installation, structured
 violations, SQL enforcement and recovery after interrupted revisions.
+See [inspection and recovery](docs/inspection-and-recovery.md) for structural
+checks, the read-only CLI and validated backup restoration.

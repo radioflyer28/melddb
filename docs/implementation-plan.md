@@ -65,7 +65,7 @@ does not close a slice or gate.
 | S06 relational CRUD | S04 Gate A | Implemented and shared conformance added: all scalar types, projection, CRUD, validation and existing SQL; executable address-book example |
 | S07 traversal | S05/S06 | Shared graph/property tests, snapshot checks and 10,000-document/50,000-edge driver comparison pass; see relationships.md and s07-scale-results.json |
 | S08 schema evolution | S05/S06/S07 | Validated declaration preflight, structured violations, raw-SQL enforcement, write-safe installation, checksum/order rollback and interrupted evolution/retry; see migrations.md |
-| S09 inspection/recovery | S08 | CLI/backup implemented; structural verification requires deeper schema-drift coverage |
+| S09 inspection/recovery | S08 | Structural/constraint/checksum checks, read-only CLI, validated standalone backups and publication-crash recovery tested; see inspection-and-recovery.md |
 | S10 logical portability | S09/S03 | SQLite and PostgreSQL mixed import proof, TS reader exist; adversarial artifacts and full format documentation pending |
 | S11 release qualification | S01–S10 | Local alpha artifacts only; actual OS/Python matrix runs, installation, performance, docs and evidence pending |
 
@@ -122,5 +122,5 @@ automatic flushing and automatic schema diffing are outside this milestone.
 
 Add capabilities only when they simplify demonstrated workflows without hidden
 persistence behavior. Next priority: resolve the UUIDv7 decision and review Gate B,
-then S09 structural inspection and recovery hardening. S08's passing migration
+then S10 logical portability and adversarial-artifact validation. S08's passing migration
 tests alone do not freeze the public API.

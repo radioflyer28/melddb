@@ -11,6 +11,7 @@ from .backend import quote
 from .database import MIGRATIONS, physical
 from .errors import (
     AlreadyExistsError,
+    ConnectionError,
     ConstraintError,
     MigrationError,
     UnsupportedError,
@@ -53,11 +54,20 @@ def backup(db, destination):
                 raise ConstraintError("Backup integrity check failed")
             if target.execute("PRAGMA foreign_key_check").fetchall():
                 raise ConstraintError("Backup contains invalid references")
+            # The detached artifact has no live writers. Make it standalone
+            # before reopening it for validation or publishing its main file.
+            target.execute("PRAGMA journal_mode=DELETE")
         finally:
             target.close()
+        from .database import Database
+        with Database(temp, readonly=True) as restored:
+            if not restored.check()["ok"]:
+                raise ConstraintError("Backup managed structure validation failed")
         with temp.open("r+b") as stream:
             os.fsync(stream.fileno())
         publish(temp, destination)
+    except sqlite3.Error as exc:
+        raise ConnectionError("SQLite backup creation or validation failed") from exc
     finally:
         temp.unlink(missing_ok=True)
     return str(destination)

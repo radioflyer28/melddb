@@ -112,3 +112,19 @@ def test_constraint_validation_holds_write_lock(tmp_path, monkeypatch):
         db.migrate(Migration("001", (s.require("docs", "key"),)))
         assert checked
         assert len(db.collection("docs").find()) == 1
+
+
+@pytest.mark.parametrize("action,published", [("backup-before-publish", False), ("backup-after-publish", True)])
+def test_backup_publication_crash(tmp_path, action, published):
+    path, destination = tmp_path / "source", tmp_path / "restored"
+    with melddb.open(path) as db:
+        db.collection("docs").insert({"value": "committed"}, id="original")
+    result = child(path, action, destination)
+    assert result.returncode == 73, result.stderr
+    assert destination.exists() is published
+    if not published:
+        with melddb.open(path) as db:
+            db.backup(destination)
+    with melddb.open(destination) as restored:
+        assert restored.check()["ok"]
+        assert restored.collection("docs").get("original")["body"] == {"value": "committed"}

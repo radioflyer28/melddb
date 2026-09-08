@@ -57,3 +57,13 @@ elif action == "evolution":
     db._backend.execute = interrupted_evolution
     db.migrate(Migration("002", (s.require("docs", "key"), s.type_of("docs", "key", type="string"),
                                  s.index("docs", "key", unique=True))))
+elif action in ("backup-before-publish", "backup-after-publish"):
+    from melddb import transfer
+    original_publish = transfer.publish
+    def interrupted_publish(temp, destination):
+        if action == "backup-before-publish":
+            os._exit(73)
+        original_publish(temp, destination)
+        os._exit(73)
+    transfer.publish = interrupted_publish
+    db.backup(args[0])

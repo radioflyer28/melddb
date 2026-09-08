@@ -145,3 +145,40 @@ installation, replay and raw-SQL rejection. CI is configured to run it across
 the OS/Python matrix; that configuration does not establish executed CI results.
 Storage remains format 2 and core dependencies are unchanged. S08 is complete;
 Gate B remains open for the tracked UUIDv7 decision and final API review.
+
+## S09 checkpoint
+
+Full SQLite plus PostgreSQL 17.11 and 18.6 runs passed **342 tests with 2 expected
+skips per run** on the same Windows/Python 3.12 host. The final focused inspection
+and recovery suite passed **27 tests**, including additional backup error handling
+and journal-preservation assertions. Ruff and `examples/recovery.py` passed.
+
+SQLite now compares managed SQL structures with declarations recreated in an
+isolated empty database, validates mappings and migration checksums, and checks
+existing data against declared constraints. Tests alter/remove tables, columns,
+indexes and triggers, replace trigger bodies, introduce unexpected triggers,
+damage metadata, and restore triggers over invalid data. Checks report failures
+without repairing source storage. Column order differences introduced by
+canonical metadata encoding do not cause false failures.
+
+Backups use SQLite's backup API and convert only the detached artifact to DELETE
+journal mode before structural validation and no-overwrite publication. Tests
+verify live WAL sources retain their mode, temporary sidecars are absent after
+ordinary completion/failure, and binary values, versions, links and external
+tables survive restoration. Restored writes are independent of the source.
+Damaged artifacts cannot be published through the validated backup path.
+
+CLI tests cover read-only inspection/checks, missing source paths, invalid
+arguments, failed checks, backup restoration and filesystem errors without
+tracebacks. Publication races preserve the competing destination. Process
+termination during copying and before/after publication leaves either no
+destination or a complete validated artifact; retry/reopen checks pass. Crashes
+can leave abandoned partial files, as documented. These are process-crash tests,
+not power-loss guarantees.
+
+PostgreSQL checking remains explicitly limited to metadata/checksum and table
+existence checks. Full native schema verification and physical backup are not
+claimed for that proof adapter. Storage format and core dependencies are unchanged.
+CI now includes the recovery example; actual OS/Python matrix execution and
+release qualification remain outstanding. S10 logical-artifact hardening is next;
+Gate B's UUIDv7 decision/API review remain open.

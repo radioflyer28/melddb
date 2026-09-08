@@ -13,6 +13,8 @@ def main():
     args = parser.parse_args()
     if args.command in ("backup", "export") and not args.destination:
         parser.error("This command requires a new destination path")
+    if args.command in ("inspect", "check") and args.destination:
+        parser.error("This command does not accept a destination")
     try:
         with melddb.open(args.database, readonly=True) as db:
             operation = getattr(db, args.command)
@@ -22,6 +24,8 @@ def main():
                 raise SystemExit(1)
     except melddb.errors.MeldDBError as exc:
         parser.exit(1, f"{exc.code}: {exc}\n")
+    except OSError as exc:
+        parser.exit(1, f"io: {exc}\n")
 
 
 if __name__ == "__main__":

@@ -125,14 +125,14 @@ def create(db, spec):
     db._register(spec)
 
 
-def add_constraint(db, op):
+def add_constraint(db, op, *, validate_only=False):
     validate_operation(op)
     be = db._backend
     # The proof adapter intentionally excludes schema evolution, before any mutation.
     if be.pg:
         raise UnsupportedError("PostgreSQL proof does not support constraint/index evolution")
     spec = db._spec(op["name"])
-    if op in spec.get("constraints", []):
+    if not validate_only and op in spec.get("constraints", []):
         return
     path = path_parts(op["path"])
     name = quote(physical(op["name"]))
@@ -174,6 +174,8 @@ def add_constraint(db, op):
         violations = [{"storage": op["name"], "path": list(path), "rule": op["op"], **row}
                       for row in violations]
         raise ValidationError("Existing data violates the proposed constraint (up to 100 shown)", violations)
+    if validate_only:
+        return
     if invalid:
         for event in ("INSERT", "UPDATE"):
             be.execute(f"CREATE TRIGGER {quote('ad_rule_'+key+event)} AFTER {event} ON {name} "

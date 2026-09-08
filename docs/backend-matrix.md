@@ -16,7 +16,7 @@ PostgreSQL remains experimental, even where the shared tests pass.
 | Raw SQL identity invariants | NOT NULL plus immutable-ID trigger | Primary key plus immutable-ID trigger |
 | Physical backup | SQLite backup API | Unsupported |
 | Logical import | SQLite restore fixtures | Mixed creation-only proof fixture |
-| Structural check | Integrity/FK checks and managed table existence | Metadata version/table existence only |
+| Structural check | Integrity/FK, generated structures, declared constraints and migration checksums | Metadata version, migration checksums and table existence only |
 | External SQL | SQLite dialect and parameters | PostgreSQL dialect and Psycopg parameters |
 
 The matrix records implemented and tested examples, not exhaustive conformance.
