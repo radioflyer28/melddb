@@ -67,4 +67,6 @@ See `examples/workflows.py` for an executable mixed-data workflow.
 The [delivery plan](docs/implementation-plan.md) tracks the remaining gates.
 The [backend matrix](docs/backend-matrix.md) describes the experimental
 PostgreSQL boundary, with [local validation evidence](docs/validation.md).
+The [Gate A comparison](docs/gate-a.md) measures full application setup and
+helpers against sqlite3 and SQLAlchemy Core using identical correctness tests.
 Passing prototype tests does not yet qualify SQLite as a supported release.

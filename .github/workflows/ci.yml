@@ -57,4 +57,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv run --extra test ruff check .
+      - run: uv run --extra test python validation/comparison.py
       - run: uv build

@@ -60,7 +60,7 @@ does not close a slice or gate.
 | S01 persistent documents | None | CRUD, reopen, isolation, detached values tested; expand lifecycle boundary review |
 | S02 atomic mixed workflow | S01 | Injected rollback after document/link/row tested on both adapters |
 | S03 PostgreSQL proof | S02 | 17/18 shared tests now run locally; CI jobs and matrix added; harden edge cases as shared contract expands |
-| S04 comparative product proof | S03 | Three implementations exist; comprehensive correctness equivalence and full setup/helper metrics still needed |
+| S04 comparative product proof | S03 | Gate A passed for the documented workload: 27 shared comparison tests, complete setup/helper metrics; see gate-a.md |
 | S05 document queries | S04 Gate A | Prototype and fixtures exist; exhaustive predicate/ordering/pagination conformance pending |
 | S06 relational CRUD | S04 Gate A | Prototype exists; full type/projection/boundary conformance pending |
 | S07 traversal | S05/S06 | BFS/properties/delete policies implemented; expand graph property tests and scale evidence |
@@ -77,7 +77,8 @@ coordination helpers. Apply identical correctness tests to direct drivers plus
 helpers, SQLAlchemy Core, and MeldDB. Include setup/helpers in the comparison,
 SQL inspection, and a query outside the portable subset. If the mixed workflow
 does not meaningfully improve on driver helpers, present evidence and reassess.
-Gate A is OPEN; the existing small comparison is not enough to close it.
+Gate A PASSED for the demonstrated workload; see gate-a.md and gate-a-results.json.
+This does not establish full SDK equivalence, performance or production usability.
 
 ### Gate B — API freeze
 
@@ -118,4 +119,4 @@ edges, callbacks, inheritance, lazy loading, tracked models, identity maps,
 automatic flushing and automatic schema diffing are outside this milestone.
 
 Add capabilities only when they simplify demonstrated workflows without hidden
-persistence behavior. Next priority: S04 and Gate A comparative evidence.
+persistence behavior. Next priority: S05/S06 complete query and relational conformance.

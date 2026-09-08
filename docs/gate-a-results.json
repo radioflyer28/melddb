@@ -1,0 +1,104 @@
+{
+  "environment": {
+    "python": "3.12.10",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "sqlite": "3.49.1",
+    "sqlalchemy": "2.0.52"
+  },
+  "implementations": {
+    "Library": {
+      "settings": "pass",
+      "mixed_cases": {
+        "1": "pass",
+        "2": "pass",
+        "3": "pass",
+        "4": "pass",
+        "duplicate": "pass",
+        "missing": "pass",
+        "restrict": "pass",
+        "caught_duplicate": "pass"
+      },
+      "metrics": {
+        "adapter_including_fault_branches": {
+          "nonblank_lines": 40,
+          "ast_statements": 35
+        },
+        "application_helpers": {
+          "nonblank_lines": 0,
+          "ast_statements": 0
+        },
+        "settings_function": {
+          "nonblank_lines": 5,
+          "ast_statements": 5
+        },
+        "total": {
+          "nonblank_lines": 45,
+          "ast_statements": 40
+        }
+      }
+    },
+    "Driver": {
+      "settings": "pass",
+      "mixed_cases": {
+        "1": "pass",
+        "2": "pass",
+        "3": "pass",
+        "4": "pass",
+        "duplicate": "pass",
+        "missing": "pass",
+        "restrict": "pass",
+        "caught_duplicate": "pass"
+      },
+      "metrics": {
+        "adapter_including_fault_branches": {
+          "nonblank_lines": 57,
+          "ast_statements": 49
+        },
+        "application_helpers": {
+          "nonblank_lines": 29,
+          "ast_statements": 28
+        },
+        "settings_function": {
+          "nonblank_lines": 16,
+          "ast_statements": 14
+        },
+        "total": {
+          "nonblank_lines": 102,
+          "ast_statements": 91
+        }
+      }
+    },
+    "Toolkit": {
+      "settings": "pass",
+      "mixed_cases": {
+        "1": "pass",
+        "2": "pass",
+        "3": "pass",
+        "4": "pass",
+        "duplicate": "pass",
+        "missing": "pass",
+        "restrict": "pass",
+        "caught_duplicate": "pass"
+      },
+      "metrics": {
+        "adapter_including_fault_branches": {
+          "nonblank_lines": 50,
+          "ast_statements": 40
+        },
+        "application_helpers": {
+          "nonblank_lines": 41,
+          "ast_statements": 38
+        },
+        "settings_function": {
+          "nonblank_lines": 12,
+          "ast_statements": 10
+        },
+        "total": {
+          "nonblank_lines": 103,
+          "ast_statements": 88
+        }
+      }
+    }
+  },
+  "measurement_scope": "Adapter + settings + all application helpers; imports and common test harness excluded. Fault-injection branches included. No latency comparison or full SDK equivalence claim."
+}

@@ -37,10 +37,15 @@ New evidence:
   Source packaging now includes crash workers, JSON fixtures and examples.
 
 Scope limits: these are local runs, not evidence that GitHub CI ran. The
-Windows/Python host matrix is incomplete. The full S04 comparison, performance
+Windows/Python host matrix is incomplete. Performance
 fixtures, schema-drift verification, adversarial artifact validation and release
 qualification remain open in implementation-plan.md. Both database adapters
 remain alpha; PostgreSQL remains experimental.
+
+Subsequent S04 checkpoint: the expanded comparative workload passes 27 tests
+across MeldDB, sqlite3 helpers and SQLAlchemy Core. The full SQLite-only run
+after S04 passed 71 tests with one expected PostgreSQL-only skip; Ruff passed.
+See gate-a.md for the scoped Gate A decision and gate-a-results.json for measurements.
 
 Container images used:
 
