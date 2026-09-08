@@ -24,6 +24,7 @@ jobs:
       - run: uv run python examples/dependencies.py
       - run: uv run python examples/schema_evolution.py
       - run: uv run python examples/recovery.py
+      - run: uv run python examples/logical_transfer.py
 
   postgres-proof:
     runs-on: ubuntu-latest
@@ -57,10 +58,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
       - run: uv run --extra test ruff check .
       - run: uv run --extra test python validation/comparison.py
       - run: uv run --extra test python validation/traversal_scale.py
+      - run: node compat/read-export.ts tests/fixtures/logical-export.json
+      - run: uv run --extra test pytest tests/test_artifacts.py -k typescript
       - run: uv build

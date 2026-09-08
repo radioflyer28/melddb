@@ -128,3 +128,17 @@ def test_backup_publication_crash(tmp_path, action, published):
     with melddb.open(destination) as restored:
         assert restored.check()["ok"]
         assert restored.collection("docs").get("original")["body"] == {"value": "committed"}
+
+
+@pytest.mark.parametrize("action,committed", [("import-before-commit", False), ("import-after-commit", True)])
+def test_import_commit_boundary(tmp_path, action, committed):
+    path = tmp_path / "imported"
+    artifact = Path(__file__).parent / "fixtures" / "logical-export.json"
+    result = child(path, action, artifact)
+    assert result.returncode == 73, result.stderr
+    with melddb.open(path) as db:
+        assert bool(db.inspect()["objects"]) is committed
+        assert db.check()["ok"]
+        if not committed:
+            db.import_into(artifact)
+        assert db.collection("documents").get("document")["version"] == 2**63-1

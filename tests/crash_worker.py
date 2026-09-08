@@ -67,3 +67,13 @@ elif action in ("backup-before-publish", "backup-after-publish"):
         os._exit(73)
     transfer.publish = interrupted_publish
     db.backup(args[0])
+elif action in ("import-before-commit", "import-after-commit"):
+    execute = db._backend.execute
+    def interrupted_import(sql, params=(), **kwargs):
+        result = execute(sql, params, **kwargs)
+        if ((action == "import-before-commit" and sql.startswith("INSERT INTO _melddb_migrations")) or
+                (action == "import-after-commit" and sql == "COMMIT")):
+            os._exit(73)
+        return result
+    db._backend.execute = interrupted_import
+    db.import_into(args[0])

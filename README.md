@@ -78,3 +78,5 @@ See [migrations](docs/migrations.md) for safe constraint installation, structure
 violations, SQL enforcement and recovery after interrupted revisions.
 See [inspection and recovery](docs/inspection-and-recovery.md) for structural
 checks, the read-only CLI and validated backup restoration.
+See [logical format and portability](docs/logical-format.md) for validated
+transfer, exact int64/binary encodings, exclusions and the TypeScript proof reader.

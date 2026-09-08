@@ -183,7 +183,8 @@ class Database(Scope):
                     raise MigrationError("Invalid managed schema JSON") from exc
                 objects.append({"name": row["name"], "physical": row["physical"],
                                 "schema": spec})
-            migrations = be.execute(f"SELECT * FROM {MIGRATIONS} ORDER BY id")[0]
+            collation = 'COLLATE "C"' if be.pg else 'COLLATE BINARY'
+            migrations = be.execute(f"SELECT * FROM {MIGRATIONS} ORDER BY id {collation}")[0]
         owned = {obj["physical"] for obj in objects} | {META, MIGRATIONS, VERSION}
         return {"format": FORMAT_VERSION, "backend": "postgresql" if be.pg else "sqlite",
                 "experimental": be.pg, "objects": objects, "migrations": migrations,

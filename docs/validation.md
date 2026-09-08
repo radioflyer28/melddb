@@ -182,3 +182,43 @@ claimed for that proof adapter. Storage format and core dependencies are unchang
 CI now includes the recovery example; actual OS/Python matrix execution and
 release qualification remain outstanding. S10 logical-artifact hardening is next;
 Gate B's UUIDv7 decision/API review remain open.
+
+## S10 checkpoint
+
+Full SQLite plus PostgreSQL 17.11 and 18.6 runs passed **396 tests with 2 expected
+skips per run** on the same Windows/Python 3.12 host. Final artifact/recovery
+checks passed **44 tests** after adding named-exclusion and nonportable raw-data
+export cases. Ruff and the executable logical-transfer example passed.
+
+The committed language-neutral fixture imports into both adapters and exports
+back to fresh SQLite. It preserves both signed int64 limits, maximum document
+version, binary values, Unicode object keys, float/exponent spellings and links.
+Node 24.13.0 independently read it with the TypeScript harness, reporting two
+record stores, two links, both exact integer limits, two binary bytes and verified
+checksums. No ordinary JavaScript-number conversion is used for unsafe integers.
+
+Adversarial tests recompute checksums after corrupting format/schema/rows,
+versions, IDs, numeric bounds, binary encodings, constraints and migration history.
+Imports fail atomically. Duplicate JSON keys, malformed JSON/non-finite constants,
+duplicate IDs/storage names, invalid references and view-only destinations are
+covered. Native SQL exclusions now list names/types; older format-1 descriptive
+exclusions remain accepted. Nonportable values introduced through raw SQL cannot
+be exported as valid managed artifacts.
+
+A concurrent SQLite writer confirms that export uses one snapshot. Process
+exits during import and before/after commit recover to either empty or fully
+imported storage, pass checks, and permit retry of uncommitted attempts. These
+are process-crash tests, not power-loss simulations.
+
+The TypeScript reader verifies canonical byte spans, preserving Python float
+spellings and Unicode key order without cross-runtime reserialization. It is
+a proof reader, not a supported SDK or complete schema validator. CI explicitly
+installs Node 24 for the fixture and reader test; Python-only environments may
+skip that optional test when no suitable Node runtime is available.
+
+Physical format 2 and logical format 1 are unchanged. Core dependencies are
+unchanged; PostgreSQL remains the creation-only experimental transfer proof.
+Full hosted cutover and streaming/resource-budgeted ingestion are not claimed.
+S10 is complete; S11 release qualification and the pending Gate B review/UUIDv7
+decision remain outstanding. CI configuration is not evidence of executed
+cross-platform qualification.
