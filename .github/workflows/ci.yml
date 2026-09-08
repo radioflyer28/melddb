@@ -18,6 +18,36 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: uv run --extra test pytest
+      - run: uv run python -c "import sqlite3; print(sqlite3.sqlite_version)"
+      - run: uv run python examples/workflows.py .demo
+
+  postgres-proof:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ["17", "18"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: melddb-proof
+          POSTGRES_DB: melddb_proof
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MELDDB_TEST_POSTGRES: postgresql://postgres:melddb-proof@localhost:5432/melddb_proof
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv run --extra test --extra postgres pytest
 
   lint-and-build:
     runs-on: ubuntu-latest

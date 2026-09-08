@@ -63,3 +63,8 @@ uv run melddb check application.db
 - Raw parameterized SQL access
 
 See `examples/workflows.py` for an executable mixed-data workflow.
+
+The [delivery plan](docs/implementation-plan.md) tracks the remaining gates.
+The [backend matrix](docs/backend-matrix.md) describes the experimental
+PostgreSQL boundary, with [local validation evidence](docs/validation.md).
+Passing prototype tests does not yet qualify SQLite as a supported release.

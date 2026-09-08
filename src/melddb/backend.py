@@ -1,5 +1,6 @@
 """Two concrete drivers. Internal SQL uses qmarks; raw SQL stays native."""
 import sqlite3
+from contextlib import suppress
 from pathlib import Path
 
 from .errors import (
@@ -50,6 +51,8 @@ class Backend:
         self.pg = postgres
         self.readonly = readonly
         self.path = str(target)
+        self.conn = None
+        psycopg = None
         try:
             if postgres:
                 try:
@@ -72,8 +75,16 @@ class Backend:
                 if self.conn.execute("PRAGMA foreign_keys").fetchone()[0] != 1:
                     raise UnsupportedError("Foreign keys could not be enabled")
                 self.conn.execute("SELECT json_valid('{}')").fetchone()
-        except (sqlite3.Error, OSError) as exc:
-            raise ConnectionError(str(exc)) from exc
+        except BaseException as exc:
+            if self.conn is not None:
+                with suppress(Exception):
+                    self.conn.close()
+            driver_error = isinstance(exc, (sqlite3.Error, OSError)) or (
+                psycopg is not None and isinstance(exc, psycopg.Error)
+            )
+            if driver_error:
+                raise ConnectionError(str(exc)) from exc
+            raise
 
     def execute(self, sql, params=(), *, raw=False):
         try:

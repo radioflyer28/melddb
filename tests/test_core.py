@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 import threading
+from pathlib import Path
 
 import pytest
 
@@ -16,6 +17,7 @@ from melddb.errors import (
     OwnershipError,
     TransactionError,
     TraversalLimitError,
+    UnsupportedError,
     ValidationError,
 )
 
@@ -30,12 +32,15 @@ def db(request, tmp_path):
         admin = psycopg.connect(os.environ["MELDDB_TEST_POSTGRES"], autocommit=True)
         admin.execute(f'CREATE SCHEMA "{namespace}"')
         from psycopg.conninfo import make_conninfo
-        database = melddb.connect(make_conninfo(os.environ["MELDDB_TEST_POSTGRES"],
-                                                options=f"-c search_path={namespace}"))
-        yield database
-        database.close()
-        admin.execute(f'DROP SCHEMA "{namespace}" CASCADE')
-        admin.close()
+        try:
+            with melddb.connect(make_conninfo(os.environ["MELDDB_TEST_POSTGRES"],
+                                               options=f"-c search_path={namespace}")) as database:
+                yield database
+        finally:
+            try:
+                admin.execute(f'DROP SCHEMA "{namespace}" CASCADE')
+            finally:
+                admin.close()
     else:
         with melddb.open(tmp_path / "db.sqlite") as database:
             yield database
@@ -83,6 +88,9 @@ def test_mixed_rollback(db, failure):
         run()
     assert len(db.collection("docs").find()) == (1 if failure else 2)
     assert len(db.table("rows").find()) == (0 if failure else 1)
+    assert len(db.relationship("links").edges(
+        db.collection("docs").ref(target), direction="in"
+    )) == (0 if failure else 1)
 
 
 def test_caught_errors_poison_transaction(db):
@@ -235,3 +243,67 @@ def test_reopen_and_isolation(tmp_path):
     conn.close()
     with pytest.raises(MigrationError):
         melddb.open(path)
+
+
+@pytest.mark.parametrize("kind", ["collection", "table"])
+def test_raw_sql_cannot_null_or_change_identity(db, kind):
+    operation = s.collection("records") if kind == "collection" else s.table("records", {"n": "integer"})
+    db.migrate(Migration("001", (operation,)))
+    storage = getattr(db, kind)("records")
+    storage.insert({"n": 1}, id="original")
+    physical = db.inspect()["objects"][0]["physical"]
+    with pytest.raises(ConstraintError):
+        db.sql(f'UPDATE "{physical}" SET id=\'changed\'')
+    with pytest.raises(ConstraintError):
+        db.sql(f'UPDATE "{physical}" SET id=NULL')
+    values = "NULL,1,'{}'" if kind == "collection" else "NULL,1"
+    with pytest.raises(ConstraintError):
+        db.sql(f'INSERT INTO "{physical}" VALUES ({values})')
+    assert storage.get("original") is not None
+    assert len(storage.find()) == 1
+
+
+def test_shared_json_contract(db):
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "json_contract.json").read_text(
+        encoding="utf-8"
+    ))
+    collection = db.collection("fixture")
+    for record in fixture["records"]:
+        assert collection.insert(record["body"], id=record["id"])["body"] == record["body"]
+    for case in fixture["queries"]:
+        predicate = getattr(field(*case["path"]), case["operator"])(*case["arguments"])
+        assert [row["id"] for row in collection.find(predicate)] == case["ids"]
+    assert [row["id"] for row in collection.find(order_by=field("v"))] == fixture["ordered_ids"]
+    assert [row["id"] for row in collection.find(order_by=field("v"), limit=3, offset=2)] == (
+        fixture["ordered_ids"][2:5]
+    )
+
+
+def test_postgres_unsupported_revision_has_no_effect(db):
+    if not db._backend.pg:
+        pytest.skip("PostgreSQL proof boundary")
+    with pytest.raises(UnsupportedError):
+        db.migrate(Migration("001", (s.collection("new"), s.require("new", "name"))))
+    assert db.inspect()["objects"] == []
+    assert db.inspect()["migrations"] == []
+
+
+def test_logical_mixed_transfer_proof(db, tmp_path):
+    with melddb.open(tmp_path / "source.db") as source:
+        setup(source)
+        with source.transaction() as tx:
+            docs = tx.collection("docs")
+            a = docs.insert({"name": "a"}, id="a")
+            b = docs.insert({"name": "b"}, id="b")
+            docs.replace("a", {"name": "revised"}, expected_version=1)
+            tx.relationship("links").connect(docs.ref(a), docs.ref(b))
+            tx.table("rows").insert({"name": "event", "n": 2**63-1}, id="event")
+        source.export(tmp_path / "transfer.json")
+    db.import_into(tmp_path / "transfer.json")
+    assert db.collection("docs").get("a") == {
+        "id": "a", "version": 2, "body": {"name": "revised"},
+    }
+    assert db.table("rows").get("event")["n"] == 2**63-1
+    assert db.relationship("links").edges(db.collection("docs").ref("a")) == [
+        {"source_id": "a", "target_id": "b", "properties": {}},
+    ]

@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "records": [
+    {"id": "a", "body": {}},
+    {"id": "b", "body": {"v": null}},
+    {"id": "c", "body": {"v": false}},
+    {"id": "d", "body": {"v": 0}},
+    {"id": "e", "body": {"v": 1.5}},
+    {"id": "f", "body": {"v": "1.5"}},
+    {"id": "g", "body": {"v": 9007199254740991}},
+    {"id": "h", "body": {"v": -9007199254740991}},
+    {"id": "i", "body": {"v": "Z"}},
+    {"id": "j", "body": {"v": "a"}}
+  ],
+  "queries": [
+    {"path": ["v"], "operator": "is_missing", "arguments": [], "ids": ["a"]},
+    {"path": ["v"], "operator": "is_null", "arguments": [], "ids": ["b"]},
+    {"path": ["v"], "operator": "eq", "arguments": [false], "ids": ["c"]},
+    {"path": ["v"], "operator": "eq", "arguments": [0], "ids": ["d"]},
+    {"path": ["v"], "operator": "eq", "arguments": [9007199254740991], "ids": ["g"]},
+    {"path": ["v"], "operator": "lt", "arguments": [0], "ids": ["h"]},
+    {"path": ["v"], "operator": "isin", "arguments": [[0, "1.5"]], "ids": ["d", "f"]}
+  ],
+  "ordered_ids": ["a", "b", "c", "h", "d", "e", "g", "f", "i", "j"]
+}

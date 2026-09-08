@@ -19,7 +19,7 @@ from .values import encode, text
 META = "_melddb_objects"
 MIGRATIONS = "_melddb_migrations"
 VERSION = "_melddb_format"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 
 def physical(name):

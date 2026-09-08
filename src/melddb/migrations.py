@@ -28,13 +28,13 @@ def create(db, spec):
     json_type = "JSONB" if be.pg else "TEXT"
     if kind == "collection":
         check = "jsonb_typeof(body)='object'" if be.pg else "json_valid(body) AND json_type(body)='object'"
-        be.execute(f"CREATE TABLE {sqlname}(id TEXT PRIMARY KEY, version BIGINT NOT NULL "
+        be.execute(f"CREATE TABLE {sqlname}(id TEXT PRIMARY KEY NOT NULL, version BIGINT NOT NULL "
                    f"CHECK(version>0), body {json_type} NOT NULL CHECK({check}))")
     elif kind == "table":
         columns = spec.get("columns")
         if not isinstance(columns, dict) or not columns:
             raise ValidationError("Table needs a column mapping")
-        declarations = ["id TEXT PRIMARY KEY"]
+        declarations = ["id TEXT PRIMARY KEY NOT NULL"]
         for column, typ in columns.items():
             text(column)
             if column == "id" or typ not in TYPES:
@@ -78,6 +78,14 @@ def create(db, spec):
     if kind in ("collection", "table") and not be.pg:
         be.execute(f"CREATE TRIGGER {quote(physical(name)+'_id')} BEFORE UPDATE OF id ON {sqlname} "
                    "WHEN NEW.id<>OLD.id BEGIN SELECT RAISE(ABORT,'immutable primary key'); END")
+    elif kind in ("collection", "table"):
+        guard = quote(physical(name) + '_id_guard')
+        be.execute(f"CREATE FUNCTION {guard}() RETURNS trigger LANGUAGE plpgsql AS "
+                   "'BEGIN IF NEW.id IS DISTINCT FROM OLD.id THEN "
+                   "RAISE EXCEPTION ''immutable primary key'' USING ERRCODE = ''23514''; "
+                   "END IF; RETURN NEW; END'")
+        be.execute(f"CREATE TRIGGER {quote(physical(name)+'_id')} BEFORE UPDATE OF id ON {sqlname} "
+                   f"FOR EACH ROW EXECUTE FUNCTION {guard}()")
     db._register(spec)
 
 

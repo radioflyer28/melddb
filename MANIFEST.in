@@ -1,0 +1,6 @@
+include AGENTS.md
+recursive-include docs *.md
+recursive-include tests *.py *.json
+recursive-include examples *.py
+recursive-include validation *.py
+recursive-include compat *.ts *.json
