@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 import melddb
+from melddb import Migration
+from melddb import schema as s
 
 
 def child(path, action, *args):
@@ -67,3 +69,46 @@ def test_cross_process_writer_contention(tmp_path):
             tx.collection("docs").insert({})
             result = child(path, "busy")
             assert result.returncode == 74, result.stderr
+
+
+@pytest.mark.parametrize("checkpoint", ["trigger", "index", "metadata", "revision", "commit"])
+def test_evolution_crash_and_retry(tmp_path, checkpoint):
+    path = tmp_path / "evolution"
+    revision = Migration("002", (s.require("docs", "key"), s.type_of("docs", "key", type="string"),
+                                  s.index("docs", "key", unique=True)))
+    with melddb.open(path) as db:
+        db.migrate(Migration("001", (s.collection("docs"),)))
+        db.collection("docs").insert({"key": "original"}, id="original")
+        before = db.sql("SELECT name,sql FROM sqlite_schema ORDER BY name")
+    result = child(path, "evolution", checkpoint)
+    assert result.returncode == 73, result.stderr
+    with melddb.open(path) as db:
+        assert len(db.inspect()["migrations"]) == (2 if checkpoint == "commit" else 1)
+        if checkpoint != "commit":
+            assert db.sql("SELECT name,sql FROM sqlite_schema ORDER BY name") == before
+        assert db.collection("docs").get("original")["body"] == {"key": "original"}
+        assert db.check()["ok"]
+        db.migrate(revision)
+        with pytest.raises(melddb.errors.ConstraintError):
+            db.collection("docs").insert({})
+        with pytest.raises(melddb.errors.AlreadyExistsError):
+            db.collection("docs").insert({"key": "original"})
+
+
+def test_constraint_validation_holds_write_lock(tmp_path, monkeypatch):
+    path = tmp_path / "locked"
+    with melddb.open(path) as db:
+        db.collection("docs").insert({"key": "original"})
+        execute = db._backend.execute
+        checked = []
+        def interleaved(sql, *args, **kwargs):
+            result = execute(sql, *args, **kwargs)
+            if sql.startswith("SELECT id FROM"):
+                writer = child(path, "busy")
+                assert writer.returncode == 74, writer.stderr
+                checked.append(True)
+            return result
+        monkeypatch.setattr(db._backend, "execute", interleaved)
+        db.migrate(Migration("001", (s.require("docs", "key"),)))
+        assert checked
+        assert len(db.collection("docs").find()) == 1

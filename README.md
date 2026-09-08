@@ -74,3 +74,5 @@ See [queries and CRUD](docs/queries-and-crud.md) for predicate semantics,
 ordering, pagination, managed types and conditional-write behavior.
 See [relationships](docs/relationships.md) for directed links, traversal budgets,
 deletion policies and the executable package-dependency example.
+See [migrations](docs/migrations.md) for safe constraint installation, structured
+violations, SQL enforcement and recovery after interrupted revisions.

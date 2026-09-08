@@ -41,3 +41,19 @@ elif action == "backup":
             original.backup(target, pages=1, progress=lambda *_: os._exit(73))
     db._backend.conn = Interrupted()
     db.backup(args[0])
+elif action == "evolution":
+    checkpoint = args[0]
+    execute = db._backend.execute
+    def interrupted_evolution(sql, params=(), **kwargs):
+        result = execute(sql, params, **kwargs)
+        reached = ((checkpoint == "trigger" and sql.startswith("CREATE TRIGGER")) or
+                   (checkpoint == "index" and sql.startswith("CREATE UNIQUE INDEX")) or
+                   (checkpoint == "metadata" and sql.startswith("UPDATE _melddb_objects")) or
+                   (checkpoint == "revision" and sql.startswith("INSERT INTO _melddb_migrations")) or
+                   (checkpoint == "commit" and sql == "COMMIT"))
+        if reached:
+            os._exit(73)
+        return result
+    db._backend.execute = interrupted_evolution
+    db.migrate(Migration("002", (s.require("docs", "key"), s.type_of("docs", "key", type="string"),
+                                 s.index("docs", "key", unique=True))))

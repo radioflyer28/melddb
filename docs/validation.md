@@ -111,3 +111,37 @@ CI now runs the dependency example in its OS/Python matrix and the scale
 workload in its Linux validation job. These edits are not evidence of executed
 CI or complete release qualification. S08/Gate B remain next; UUIDv7 evaluation
 is tracked separately before the API freeze.
+
+## S08 checkpoint
+
+On the same Windows/Python 3.12 host, the full suite passed with **323 passed,
+2 expected skips** against each of PostgreSQL 17.11 and 18.6, including SQLite
+in both runs. The SQLite-only run passed 189 tests with one expected skip.
+After adding final tests for capped diagnostics and binary revision ordering,
+the focused migration suite passed **39 tests per PostgreSQL version**, including
+SQLite. No production code changed after the full-suite runs. Ruff and
+`examples/schema_evolution.py` passed.
+
+S08 adds declaration preflight with stable errors, consistent binary revision
+ordering, idempotent repeated constraint declarations, and deterministic
+violations identifying storage, path, rule and affected IDs. Uniqueness
+diagnostics include complete duplicate-group counts with a 100-row report cap.
+
+Tests cover full-request rollback after checksum drift and invalid existing
+data, physical schema equality after failed installation, required/primitive/
+unique enforcement using a direct sqlite3 connection, missing/null and numeric
+type distinctions, quoted object keys, arrays, and metadata version refusal.
+The PostgreSQL proof rejects evolution before any schema mutation across the
+whole request; it remains creation-only.
+
+Process exits at trigger creation, index creation, metadata updates, revision
+recording and commit recover to the correct transaction boundary. Every case
+passes integrity/FK checks and a successful migration retry. A separate-process
+writer is rejected while validation holds the SQLite write lock. These are
+process-crash and lock tests, not power-loss simulations.
+
+The new executable example demonstrates validation, explicit data repair,
+installation, replay and raw-SQL rejection. CI is configured to run it across
+the OS/Python matrix; that configuration does not establish executed CI results.
+Storage remains format 2 and core dependencies are unchanged. S08 is complete;
+Gate B remains open for the tracked UUIDv7 decision and final API review.

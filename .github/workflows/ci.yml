@@ -22,6 +22,7 @@ jobs:
       - run: uv run python examples/workflows.py .demo
       - run: uv run python examples/query_crud.py .demo/queries
       - run: uv run python examples/dependencies.py
+      - run: uv run python examples/schema_evolution.py
 
   postgres-proof:
     runs-on: ubuntu-latest

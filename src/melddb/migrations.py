@@ -11,7 +11,43 @@ from .storage import TYPES
 from .values import encode, text
 
 
+def validate_operation(op):
+    """Reject malformed declarations before executing any operation in a request."""
+    fields = {"collection": {"op", "name"}, "table": {"op", "name", "columns"},
+              "relationship": {"op", "name", "source", "target", "on_delete", "properties"},
+              "require": {"op", "name", "path"}, "type": {"op", "name", "path", "type"},
+              "index": {"op", "name", "path", "unique"}}
+    if (not isinstance(op, dict) or not isinstance(op.get("op"), str) or
+            op["op"] not in fields or set(op) != fields[op["op"]]):
+        raise ValidationError("Invalid migration operation or fields")
+    if not text(op["name"]) or op["name"].startswith("_melddb_"):
+        raise ValidationError("Invalid managed name")
+    kind = op["op"]
+    if kind == "table":
+        columns = op["columns"]
+        if not isinstance(columns, dict) or not columns:
+            raise ValidationError("Table needs a column mapping")
+        names = {"id"}
+        for name, typ in columns.items():
+            # SQLite folds ASCII identifier case even when identifiers are quoted.
+            folded = text(name).translate(str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"))
+            if not name or folded in names or not isinstance(typ, str) or typ not in TYPES:
+                raise ValidationError("Invalid or duplicate column/type")
+            names.add(folded)
+    elif kind == "relationship":
+        if (not text(op["source"]) or not text(op["target"]) or
+                op["on_delete"] not in ("restrict", "cascade") or type(op["properties"]) is not bool):
+            raise ValidationError("Invalid relationship declaration")
+    elif kind in ("require", "type", "index"):
+        path_parts(op["path"])
+        if kind == "type" and op["type"] not in ("string", "number", "integer", "boolean"):
+            raise ValidationError("Supported JSON types: string, number, integer, boolean")
+        if kind == "index" and type(op["unique"]) is not bool:
+            raise ValidationError("Index unique must be a boolean")
+
+
 def create(db, spec):
+    validate_operation(spec)
     be = db._backend
     db._ensure_metadata()
     name = text(spec["name"])
@@ -90,11 +126,14 @@ def create(db, spec):
 
 
 def add_constraint(db, op):
+    validate_operation(op)
     be = db._backend
     # The proof adapter intentionally excludes schema evolution, before any mutation.
     if be.pg:
         raise UnsupportedError("PostgreSQL proof does not support constraint/index evolution")
     spec = db._spec(op["name"])
+    if op in spec.get("constraints", []):
+        return
     path = path_parts(op["path"])
     name = quote(physical(op["name"]))
     key = hashlib.sha256(encode(op).encode()).hexdigest()[:24]
@@ -126,11 +165,14 @@ def add_constraint(db, op):
         raise ValidationError("Constraints apply to record storage")
     violations = []
     if invalid:
-        violations = be.execute(f"SELECT id FROM {name} WHERE {invalid} LIMIT 100")[0]
+        violations = be.execute(f"SELECT id FROM {name} WHERE {invalid} ORDER BY id COLLATE BINARY LIMIT 100")[0]
     elif op.get("unique"):
-        violations = be.execute(f"SELECT {expressions},COUNT(*) AS count FROM {name} WHERE {scalar} "
-                                f"GROUP BY {expressions} HAVING COUNT(*)>1 LIMIT 100")[0]
+        violations = be.execute(
+            f"SELECT id,count FROM (SELECT id,COUNT(*) OVER (PARTITION BY {expressions}) AS count "
+            f"FROM {name} WHERE {scalar}) WHERE count>1 ORDER BY id COLLATE BINARY LIMIT 100")[0]
     if violations:
+        violations = [{"storage": op["name"], "path": list(path), "rule": op["op"], **row}
+                      for row in violations]
         raise ValidationError("Existing data violates the proposed constraint (up to 100 shown)", violations)
     if invalid:
         for event in ("INSERT", "UPDATE"):
@@ -152,6 +194,10 @@ def apply(db, migrations):
     for migration in migrations:
         if not isinstance(migration, Migration) or not text(migration.id):
             raise ValidationError("Expected a named Migration")
+        if not isinstance(migration.operations, (tuple, list)):
+            raise ValidationError("Migration operations must be a list or tuple")
+        for op in migration.operations:
+            validate_operation(op)
         if be.pg and any(op.get("op") not in ("collection", "table", "relationship")
                          for op in migration.operations):
             raise UnsupportedError("PostgreSQL proof supports creation migrations only")
@@ -166,7 +212,9 @@ def apply(db, migrations):
             if old[0]["checksum"] != checksum:
                 raise MigrationError("Migration checksum drift")
             continue
-        latest = be.execute(f"SELECT MAX(id) AS id FROM {MIGRATIONS}")[0][0]["id"]
+        collation = 'COLLATE "C"' if be.pg else 'COLLATE BINARY'
+        rows = be.execute(f"SELECT id FROM {MIGRATIONS} ORDER BY id {collation} DESC LIMIT 1")[0]
+        latest = rows[0]["id"] if rows else None
         if latest is not None and migration.id <= latest:
             raise MigrationError("Migration IDs must increase lexicographically; use zero padding")
         for op in migration.operations:
