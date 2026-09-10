@@ -2,7 +2,7 @@
 
 All reads return detached values. Modifying a result never writes to storage.
 All writes are explicit and share the same transaction-owned handles as
-relationships. These interfaces remain alpha until Gate B.
+relationships. Gate B passed for the v0.1.0rc1 API; release qualification remains open.
 
 ## Documents
 

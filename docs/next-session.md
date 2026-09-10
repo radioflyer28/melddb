@@ -34,3 +34,19 @@ contents. No Git remote is configured, by the user's current preference.
 When resumed, review the candidate and decide how to obtain macOS evidence. The
 configured CI matrix can run once an authorized remote is supplied. Do not claim
 Gate C complete solely from CI configuration or successful Windows/Linux tests.
+
+## Future-work record — 2026-09-10
+
+See [roadmap.md](roadmap.md) before planning later milestones. It preserves the
+original backend/SDK roadmap and the Cacheness discussion, distinguishing agreed
+goals from proposed designs. This documentation update does not resume development.
+
+Ownership clarification: Cacheness depends on MeldDB and owns its adapter and
+end-to-end integration in the Cacheness repository. MeldDB remains independent;
+consumer context in roadmap.md does not authorize Cacheness integration here.
+
+## Beta preparation — 2026-09-10
+
+README.md now contains installation, runnable onboarding examples, ownership rules,
+and recovery guidance. See beta-testing.md for controlled evaluation and reporting.
+Feature work remains paused; no remote, publication, or artifact rebuild was done.

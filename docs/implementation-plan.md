@@ -124,3 +124,7 @@ automatic flushing and automatic schema diffing are outside this milestone.
 Add capabilities only when they simplify demonstrated workflows without hidden
 persistence behavior. Next priority: obtain macOS 3.12–3.14 CI qualification and
 review the release candidate before closing Gate C. No package has been published.
+
+See [the future roadmap](roadmap.md) for the original post-release milestones and
+the subsequent Cacheness consumer context. Cacheness owns its MeldDB adapter and
+integration; that work is not implemented in this repository.
