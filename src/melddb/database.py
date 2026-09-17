@@ -210,6 +210,28 @@ class Database(Scope):
         errors += structural_errors(self)
         return {"ok": not errors, "errors": errors}
 
+    def sqlite_runtime(self):
+        self._available()
+        return self._backend.sqlite_runtime()
+
+    def maintain_sqlite(self, *, statistics="optimize", checkpoint="passive"):
+        self._available()
+        if self._backend.pg:
+            raise UnsupportedError("SQLite maintenance is unavailable on PostgreSQL")
+        if not self._backend.file_backed:
+            raise UnsupportedError("SQLite maintenance requires a file-backed database")
+        if self._backend.readonly:
+            raise UnsupportedError("SQLite maintenance requires a writable database")
+        if statistics not in (None, "optimize", "analyze"):
+            raise ValidationError("statistics must be None, 'optimize', or 'analyze'")
+        if checkpoint not in (None, "passive", "full", "restart", "truncate"):
+            raise ValidationError(
+                "checkpoint must be None, 'passive', 'full', 'restart', or 'truncate'"
+            )
+        if statistics is None and checkpoint is None:
+            raise ValidationError("SQLite maintenance requires at least one action")
+        return self._backend.maintain_sqlite(statistics=statistics, checkpoint=checkpoint)
+
     def backup(self, destination):
         from .transfer import backup
         self._available()

@@ -3,6 +3,7 @@
 import hashlib
 import json
 import shutil
+import sqlite3
 import subprocess
 from pathlib import Path
 
@@ -126,7 +127,9 @@ def test_view_only_destination_is_not_empty(db, tmp_path):
 
 def test_snapshot_includes_one_committed_state(tmp_path, monkeypatch):
     path = tmp_path / "live.db"
-    with melddb.open(path) as source, melddb.open(path) as writer:
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", (3, 50, 7))
+    with (melddb.open(path, journal_mode="wal") as source,
+          melddb.open(path, journal_mode="wal") as writer):
         fixture(source)
         execute = source._backend.execute
         changed = False

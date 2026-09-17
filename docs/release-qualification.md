@@ -15,6 +15,14 @@ passes. Use a Python build with a capable SQLite library; qualification also
 tests uv-managed builds. There is no callback or degraded-constraint fallback.
 Report the loaded SQLite version rather than inferring it from Python's version.
 
+Writable WAL has a separate fail-closed boundary following SQLite's WAL-reset fix:
+3.51.3+, or the fixed 3.50.7 and 3.44.6 backport lines. New files fall back to DELETE
+on an otherwise compatible unqualified runtime. Explicit WAL and existing writable
+WAL files are rejected with upgrade/DELETE guidance. This policy was added after the
+recorded rc1 artifact qualification; those artifact reports are historical evidence
+and do not qualify the new API. See [SQLite runtime configuration and
+maintenance](sqlite-runtime.md).
+
 ## UUIDv7 decision
 
 Generated document/table IDs use RFC 9562 UUIDv7: 48-bit Unix milliseconds and

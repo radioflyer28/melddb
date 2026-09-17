@@ -1,4 +1,5 @@
 """S07 directed relationship behavior and traversal reference checks."""
+import sqlite3
 from collections import deque
 
 import pytest
@@ -191,6 +192,13 @@ def test_reference_bfs(db, links, direction, depth):
 
 
 def test_traversal_uses_one_snapshot(db, monkeypatch):
+    replacement = None
+    if not db._backend.pg:
+        path = db._backend.path
+        db.close()
+        monkeypatch.setattr(sqlite3, "sqlite_version_info", (3, 50, 7))
+        replacement = melddb.open(path, journal_mode="wal")
+        db = replacement
     nodes, _, edges = graph(db, policy="cascade")
     a, b = nodes.ref(nodes.insert({"n": 1})), nodes.ref(nodes.insert({"n": 2}))
     edges.connect(a, b)
@@ -205,10 +213,14 @@ def test_traversal_uses_one_snapshot(db, monkeypatch):
             other.collection("nodes").delete(b.id)
         return rows
     try:
-        monkeypatch.setattr(db._backend, "execute", interleaved)
-        result = edges.neighbors(a)
-        assert result[0]["record"]["body"] == {"n": 2}
-        assert changed
+        try:
+            monkeypatch.setattr(db._backend, "execute", interleaved)
+            result = edges.neighbors(a)
+            assert result[0]["record"]["body"] == {"n": 2}
+            assert changed
+        finally:
+            other.close()
+        assert nodes.get(b.id) is None
     finally:
-        other.close()
-    assert nodes.get(b.id) is None
+        if replacement is not None:
+            replacement.close()

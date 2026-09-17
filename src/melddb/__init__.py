@@ -7,8 +7,8 @@ from .values import Ref, field
 __all__ = ["open", "connect", "Database", "Migration", "Ref", "field", "schema", "errors"]
 
 
-def open(path, *, timeout=5, readonly=False):
-    return Database(path, timeout=timeout, readonly=readonly)
+def open(path, *, timeout=5, readonly=False, journal_mode=None):
+    return Database(path, timeout=timeout, readonly=readonly, journal_mode=journal_mode)
 
 
 def connect(url, *, timeout=5):

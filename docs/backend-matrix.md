@@ -18,6 +18,8 @@ PostgreSQL remains experimental, even where the shared tests pass.
 | Logical import | SQLite restore fixtures | Mixed creation-only proof fixture |
 | Structural check | Integrity/FK, generated structures, declared constraints and migration checksums | Metadata version, migration checksums and table existence only |
 | External SQL | SQLite dialect and parameters | PostgreSQL dialect and Psycopg parameters |
+| Runtime settings | Effective SQLite version/journal/synchronous/FK report; explicit WAL/DELETE selection | Unsupported |
+| Statistics and checkpoints | Explicit optimize/ANALYZE and structured WAL checkpoint results | Unsupported |
 
 The matrix records implemented and tested examples, not exhaustive conformance.
 In particular, PostgreSQL check() is not equivalent to SQLite's integrity check.
@@ -34,6 +36,11 @@ is unchanged. No automatic in-place physical upgrade is implemented.
 Raw SQL does not acquire managed document version increments. Direct external
 SQLite connections must enable foreign keys. Transactions have explicit
 ownership; backends do not promise equal isolation or writer concurrency.
+
+Writable WAL is additionally qualified against SQLite's WAL-reset fix. The current
+policy accepts SQLite 3.51.3+, the 3.50.7 backport line, and the 3.44.6 backport line.
+Other otherwise-compatible runtimes use DELETE for new files unless WAL is explicitly
+requested, in which case open fails. This is a runtime policy, not PostgreSQL behavior.
 
 ## Run the proof
 

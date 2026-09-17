@@ -39,7 +39,9 @@ python -m pip install ./dist/melddb-0.1.0rc1-py3-none-any.whl
 SQLite 3.38+ is required, but the version alone is insufficient. MeldDB checks
 required JSON-path behavior on open and raises `UnsupportedError` if the loaded
 SQLite cannot provide it. Use a Python distribution with a compatible SQLite;
-see [verified versions and limitations](docs/release-qualification.md).
+see [verified versions and limitations](docs/release-qualification.md). Writable
+WAL additionally requires SQLite 3.51.3+ or a documented fixed backport; unqualified
+runtimes default new files to DELETE mode.
 
 ## First document: store, query, update, reopen
 
@@ -143,8 +145,21 @@ See [relationships](docs/relationships.md) and [migrations](docs/migrations.md).
 - Nested transactions are rejected. Transaction handles expire after exit.
 - Each database handle is confined to its creating thread. Use separate handles
   for concurrent threads/processes; references cannot cross database handles.
-- New SQLite databases use WAL, FULL synchronous writes, foreign keys, and a
-  five-second busy timeout. Configure waiting with `melddb.open(path, timeout=5)`.
+- New SQLite databases use WAL when the loaded runtime is qualified, otherwise
+  DELETE. Existing files preserve their mode unless `journal_mode="wal"` or
+  `journal_mode="delete"` is explicit. Every connection requests FULL synchronous
+  writes and foreign keys. Configure waiting with `melddb.open(path, timeout=5)`.
+
+## SQLite runtime and maintenance
+
+Use `db.sqlite_runtime()` to inspect the loaded SQLite version, effective journal and
+synchronous modes, foreign-key enforcement, and named runtime capabilities. Use
+`db.maintain_sqlite()` for explicit bounded statistics optimization and WAL
+checkpointing; full `ANALYZE` and stronger checkpoint modes are opt-in. Neither
+operation exposes the driver connection or runs automatically.
+
+See [SQLite runtime configuration and maintenance](docs/sqlite-runtime.md) for the
+journal-selection API, WAL safety policy, structured results, and concurrency limits.
 
 ## SQL, inspection, and recovery
 
@@ -216,6 +231,7 @@ and [logical transfer](examples/logical_transfer.py).
 - [Relationships](docs/relationships.md) and [migrations](docs/migrations.md)
 - [Inspection and recovery](docs/inspection-and-recovery.md)
 - [Logical format and portability](docs/logical-format.md)
+- [SQLite runtime configuration and maintenance](docs/sqlite-runtime.md)
 - [Release qualification](docs/release-qualification.md) and [validation](docs/validation.md)
 - [Product comparison](docs/gate-a.md), [delivery plan](docs/implementation-plan.md),
   and [future roadmap](docs/roadmap.md)

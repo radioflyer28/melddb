@@ -39,8 +39,10 @@ utilities distinct. No process-global connection registry or plugin framework.
 - Standalone writes are atomic; explicit tx owns all operations. Failure
   poisons tx even if caught. Reject nested tx and ordinary db operations while
   tx is active. Expire tx handles, confine db handles to one thread, no retry.
-- New SQLite storage: WAL, synchronous FULL, FK enforcement and five-second
-  configurable busy timeout. Preserve existing external journal modes.
+- New SQLite storage: WAL only on a runtime with the WAL-reset fix, otherwise
+  DELETE; synchronous FULL, FK enforcement and five-second configurable busy
+  timeout. Preserve existing external journal modes unless callers explicitly
+  select WAL or DELETE, and verify the effective mode.
 - Versioned checksummed migrations support creation, indexes, required fields,
   primitive types and uniqueness. Validate existing data under a write-safe
   transaction; structured violations; atomic failure. Enforce constraints in

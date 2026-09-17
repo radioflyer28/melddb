@@ -67,10 +67,11 @@ def test_structural_drift(tmp_path, damage, code):
         assert raw.execute("SELECT name,sql FROM sqlite_schema ORDER BY name").fetchall() == before
 
 
-def test_backup_restore_live_wal_and_external_storage(tmp_path):
+def test_backup_restore_live_wal_and_external_storage(tmp_path, monkeypatch):
     path, backup = tmp_path / "source.db", tmp_path / "restored.db"
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", (3, 50, 7))
     names = populate(path)
-    with melddb.open(path) as source:
+    with melddb.open(path, journal_mode="wal") as source:
         source.sql("CREATE TABLE external_log(message TEXT)")
         source.sql("INSERT INTO external_log VALUES (?)", ("preserved",))
         source.sql(f'CREATE INDEX extra_lookup ON "{names["rows"]}"(value)')

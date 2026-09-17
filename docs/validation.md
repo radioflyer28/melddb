@@ -279,3 +279,23 @@ remain review candidates; publication requires a separate action.
 
 User elected to keep the repository local and pause at this checkpoint. macOS
 qualification remains intentionally pending; see next-session.md for resumption.
+
+## SQLite runtime-management checkpoint
+
+The post-rc1 SQLite runtime-management change passed **286 tests with 1 optional
+skip** on Windows/Python 3.14.7 with loaded SQLite 3.50.4; the focused new suite
+passed 40 cases. Ruff passed. PostgreSQL was not configured for this local run, so
+the existing experimental PostgreSQL proof was not re-executed.
+
+Tests cover accepted WAL-fix releases and backports, rejected explicit or preserved
+writable WAL on unqualified runtimes, safe DELETE defaults/fallback, existing-file
+mode transitions, read-only assertions, in-memory boundaries, detached effective
+runtime reports, bounded optimize/full ANALYZE, all supported checkpoint modes,
+reader-pinned partial/busy results, no-WAL normalization, error translation, thread
+ownership, and transaction poisoning. Existing snapshot/concurrent-writer tests now
+select WAL explicitly under a simulated fixed backport so the host's unqualified
+3.50.4 runtime does not silently weaken their coverage.
+
+This is checkout-level evidence, not rebuilt wheel/sdist or cross-platform release
+qualification. The previously recorded rc1 artifact matrix predates this API and
+remains historical evidence only.
