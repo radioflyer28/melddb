@@ -223,6 +223,11 @@ and [logical transfer](examples/logical_transfer.py).
 Cacheness is a prospective consumer of MeldDB. Its adapter and end-to-end
 integration belong in the Cacheness repository; MeldDB stays independent.
 
+## License
+
+MeldDB is licensed under [Apache-2.0](LICENSE). Optional dependencies retain
+their own licenses. The core remains free of third-party runtime dependencies.
+
 ## Development
 
 ```console

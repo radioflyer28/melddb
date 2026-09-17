@@ -34,6 +34,8 @@ def qualify(artifacts):
             probe = subprocess.check_output([str(python), "-I", "-c",
                 "import json,sqlite3,melddb,importlib.metadata as m; "
                 "assert not [d for d in m.requires('melddb') or [] if 'extra ==' not in d]; "
+                "assert m.metadata('melddb')['License-Expression'] == 'Apache-2.0'; "
+                "assert any(str(p).endswith('/licenses/LICENSE') for p in m.files('melddb')); "
                 "print(json.dumps({'python':__import__('platform').python_version(),"
                 "'sqlite':sqlite3.sqlite_version,'package':melddb.__file__,'version':m.version('melddb')}))"],
                 cwd=root, env=env, text=True)
