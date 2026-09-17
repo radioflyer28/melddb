@@ -299,3 +299,33 @@ select WAL explicitly under a simulated fixed backport so the host's unqualified
 This is checkout-level evidence, not rebuilt wheel/sdist or cross-platform release
 qualification. The previously recorded rc1 artifact matrix predates this API and
 remains historical evidence only.
+
+## Transaction-contract hardening checkpoint
+
+The local Windows/Python 3.14.7 run with SQLite 3.50.4 passed **312 tests with
+2 optional skips**. The focused transaction-contract suite passed **26 tests with
+1 PostgreSQL-only skip**, Ruff passed, and strict OpenSpec validation passed.
+`MELDDB_TEST_POSTGRES` was not configured, so the experimental PostgreSQL proof was
+not re-executed in this environment.
+
+The transaction contract now treats read-only intent and uncertain finalization as
+public behavior. Focused tests cover managed and raw-SQL mutation attempts in read
+transactions, standalone read SQL, SQLite WAL reader/writer concurrency, expected busy
+starts, partially entered starts, deferred constraints at commit, lost commit
+acknowledgements before and after durability, rollback and query-only cleanup failures,
+error evidence, quarantine of every public database operation, and idempotent close.
+The same read-only cases are parameterized for the experimental PostgreSQL adapter and
+run when `MELDDB_TEST_POSTGRES` is configured.
+
+The shared `metadata-provider-contract` needs no delta for this change. MeldDB already
+owns transaction, SQL, backend translation, and connection semantics; strengthening
+those semantics does not move responsibility between repositories. Its existing
+compatibility requirement does require MeldStore to review its adapter before updating
+the pinned MeldDB revision.
+
+MeldStore adoption remains a separate repository-local change. Before removing its
+read-SQL classifier or broken-catalog state, that change must run both catalog adapters'
+transaction, deferred-constraint, read-only, lifecycle, and uncertain-commit tests
+against the selected MeldDB revision. Blob publication, payload recovery, and operation
+identity remain MeldStore responsibilities; this change adds no blob concepts to
+MeldDB.

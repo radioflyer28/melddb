@@ -69,6 +69,7 @@ class Backend:
         self.path = str(target)
         self.file_backed = not postgres and self.path != ":memory:"
         self.conn = None
+        self._query_only_before = None
         psycopg = None
         try:
             if postgres:
@@ -222,6 +223,21 @@ class Backend:
             kind = BusyError if code & 255 in (5, 6) else ValidationError
             raise kind(str(exc)) from exc
 
+    def _query_only(self):
+        return bool(self.conn.execute("PRAGMA query_only").fetchone()[0])
+
+    def _set_query_only(self, enabled):
+        self.conn.execute(f"PRAGMA query_only={'ON' if enabled else 'OFF'}")
+        if self._query_only() is not enabled:
+            raise UnsupportedError("SQLite could not enforce the requested read-only mode")
+
+    def in_transaction(self):
+        if not self.pg:
+            return self.conn.in_transaction
+        status = self.conn.info.transaction_status
+        name = getattr(status, "name", str(status)).upper()
+        return name != "IDLE"
+
     def execute(self, sql, params=(), *, raw=False):
         try:
             if self.pg:
@@ -254,8 +270,12 @@ class Backend:
             raise kind(str(exc)) from exc
 
     def begin(self, write=True):
+        if not self.pg and not write:
+            self._query_only_before = self._query_only()
+            if not self._query_only_before:
+                self._set_query_only(True)
         statement = ("BEGIN" if write else "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY") if self.pg else (
-            "BEGIN IMMEDIATE" if write and not self.readonly else "BEGIN")
+            "BEGIN IMMEDIATE" if write else "BEGIN")
         self.execute(statement)
 
     def commit(self):
@@ -263,6 +283,20 @@ class Backend:
 
     def rollback(self):
         self.execute("ROLLBACK")
+
+    def finish_transaction(self):
+        if self.pg or self._query_only_before is None:
+            return
+        previous = self._query_only_before
+        self._query_only_before = None
+        if self._query_only() is not previous:
+            self._set_query_only(previous)
+
+    def recover_begin(self):
+        if self.in_transaction():
+            self.rollback()
+        self.finish_transaction()
+        return not self.in_transaction()
 
     def exists(self, table):
         if self.pg:

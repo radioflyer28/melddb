@@ -7,11 +7,14 @@ from contextlib import contextmanager
 
 from .backend import Backend
 from .errors import (
+    CommitError,
     MeldDBError,
     MigrationError,
     NotFoundError,
     OwnershipError,
+    RollbackError,
     TransactionError,
+    TransactionOutcomeError,
     UnsupportedError,
     ValidationError,
 )
@@ -27,6 +30,20 @@ def physical(name):
     return "ad_" + hashlib.sha256(text(name).encode()).hexdigest()[:32]
 
 
+def _raw_sql(scope, statement, params):
+    # Raw SQL is an escape hatch, not a transaction-control API.
+    import re
+    cleaned = re.sub(r"/\*.*?\*/|--[^\n]*", " ", statement, flags=re.S).strip()
+    first = cleaned.split(None, 1)[0].upper() if cleaned else ""
+    if first in {
+        "BEGIN", "COMMIT", "ROLLBACK", "END", "SAVEPOINT", "RELEASE",
+        "VACUUM", "PRAGMA", "ATTACH", "DETACH",
+    }:
+        raise UnsupportedError("Use the library transaction/configuration interfaces")
+    rows, _ = scope._db._backend.execute(statement, params, raw=True)
+    return rows
+
+
 class Scope:
     def collection(self, name):
         from .storage import Collection
@@ -40,23 +57,16 @@ class Scope:
         from .relationships import Relationship
         return Relationship(self, text(name))
 
-    def sql(self, statement, params=()):
-        with self._operation(write=True):
-            # Raw SQL is an escape hatch, not a transaction-control API.
-            import re
-            cleaned = re.sub(r"/\*.*?\*/|--[^\n]*", " ", statement, flags=re.S).strip()
-            first = cleaned.split(None, 1)[0].upper() if cleaned else ""
-            if first in {"BEGIN", "COMMIT", "ROLLBACK", "END", "SAVEPOINT", "RELEASE", "VACUUM", "PRAGMA"}:
-                raise UnsupportedError("Use the library transaction/configuration interfaces")
-            rows, _ = self._db._backend.execute(statement, params, raw=True)
-            return rows
-
-
 class Transaction(Scope):
-    def __init__(self, db):
+    def __init__(self, db, *, write):
         self._db = db
         self._live = True
         self._failed = False
+        self._write = write
+
+    def sql(self, statement, params=()):
+        with self._operation():
+            return _raw_sql(self, statement, params)
 
     def transaction(self):
         self._failed = True
@@ -70,6 +80,8 @@ class Transaction(Scope):
                 raise OwnershipError("Transaction handle has expired")
             if self._failed:
                 raise TransactionError("Transaction has failed and must roll back")
+            if write and not self._write:
+                raise UnsupportedError("Write operation is unavailable in a read-only transaction")
             yield
         except BaseException:
             self._failed = True
@@ -84,15 +96,25 @@ class Database(Scope):
         self._thread = threading.get_ident()
         self._active = None
         self._closed = False
+        self._state = "idle"
         try:
             self._verify_metadata()
         except BaseException:
             self.close()
             raise
 
-    def _assert_thread(self):
-        if self._closed or threading.get_ident() != self._thread:
+    def _assert_owner(self):
+        if threading.get_ident() != self._thread:
             raise OwnershipError("Database is closed or used from another thread")
+
+    def _assert_thread(self):
+        self._assert_owner()
+        if self._closed:
+            raise OwnershipError("Database is closed or used from another thread")
+        if self._state == "quarantined":
+            raise TransactionError(
+                "Database transaction outcome is uncertain; close and reopen the handle"
+            )
 
     def _available(self):
         self._assert_thread()
@@ -102,18 +124,88 @@ class Database(Scope):
 
     @contextmanager
     def transaction(self, *, write=True):
+        if type(write) is not bool:
+            raise ValidationError("write must be boolean")
         self._available()
-        tx = Transaction(self)
-        self._backend.begin(write)
+        if write and self._backend.readonly:
+            raise UnsupportedError("Write operation is unavailable on a read-only database")
+        tx = Transaction(self, write=write)
+        try:
+            self._backend.begin(write)
+        except BaseException as initiating_error:
+            try:
+                reusable = self._backend.recover_begin()
+            except BaseException as backend_error:
+                self._state = "quarantined"
+                raise TransactionOutcomeError(
+                    "Transaction start failed and connection state is uncertain; close and reopen",
+                    phase="begin",
+                    outcome="unknown",
+                    initiating_error=initiating_error,
+                    backend_error=backend_error,
+                ) from initiating_error
+            if not reusable:
+                self._state = "quarantined"
+                raise TransactionOutcomeError(
+                    "Transaction start failed and connection state is uncertain; close and reopen",
+                    phase="begin",
+                    outcome="unknown",
+                    initiating_error=initiating_error,
+                ) from initiating_error
+            raise
         self._active = tx
+        self._state = "active"
         try:
             yield tx
             if tx._failed:
                 raise TransactionError("A failed operation requires rollback")
-            self._backend.commit()
-        except BaseException:
-            self._backend.rollback()
+        except BaseException as initiating_error:
+            try:
+                self._backend.rollback()
+            except BaseException as backend_error:
+                self._state = "quarantined"
+                raise RollbackError(
+                    "Rollback failed; close and reopen before resolving or retrying",
+                    phase="rollback",
+                    outcome="unknown",
+                    initiating_error=initiating_error,
+                    backend_error=backend_error,
+                ) from initiating_error
+            try:
+                self._backend.finish_transaction()
+            except BaseException as backend_error:
+                self._state = "quarantined"
+                raise RollbackError(
+                    "Transaction rolled back but connection cleanup failed; close and reopen",
+                    phase="cleanup",
+                    outcome="rolled_back",
+                    initiating_error=initiating_error,
+                    backend_error=backend_error,
+                ) from initiating_error
+            self._state = "idle"
             raise
+        else:
+            try:
+                self._backend.commit()
+            except BaseException as backend_error:
+                self._state = "quarantined"
+                raise CommitError(
+                    "Commit outcome is uncertain; close and reopen before resolving or retrying",
+                    phase="commit",
+                    outcome="unknown",
+                    backend_error=backend_error,
+                ) from backend_error
+            try:
+                self._backend.finish_transaction()
+            except BaseException as backend_error:
+                self._state = "quarantined"
+                raise CommitError(
+                    "Transaction committed but connection cleanup failed; close and reopen",
+                    phase="cleanup",
+                    outcome="committed",
+                    backend_error=backend_error,
+                ) from backend_error
+            self._state = "idle"
         finally:
             tx._live = False
             self._active = None
@@ -122,6 +214,12 @@ class Database(Scope):
     def _operation(self, write=False):
         with self.transaction(write=write):
             yield
+
+    def sql(self, statement, params=(), *, write=True):
+        if type(write) is not bool:
+            raise ValidationError("write must be boolean")
+        with self._operation(write=write):
+            return _raw_sql(self, statement, params)
 
     def _verify_metadata(self):
         be = self._backend
@@ -222,6 +320,7 @@ class Database(Scope):
             raise UnsupportedError("SQLite maintenance requires a file-backed database")
         if self._backend.readonly:
             raise UnsupportedError("SQLite maintenance requires a writable database")
+        self._backend.finish_transaction()
         if statistics not in (None, "optimize", "analyze"):
             raise ValidationError("statistics must be None, 'optimize', or 'analyze'")
         if checkpoint not in (None, "passive", "full", "restart", "truncate"):
@@ -249,9 +348,13 @@ class Database(Scope):
 
     def close(self):
         if not self._closed:
-            self._available()
+            self._assert_owner()
+            if self._active is not None and self._state != "quarantined":
+                self._active._failed = True
+                raise OwnershipError("Use the transaction-owned handle inside a transaction")
             self._backend.conn.close()
             self._closed = True
+            self._state = "closed"
 
     def __enter__(self):
         self._available()

@@ -8,6 +8,8 @@ PostgreSQL remains experimental, even where the shared tests pass.
 | Documents, versions, detached values | Shared tests | Shared tests |
 | Managed scalar tables and projections | Shared tests | Shared tests |
 | Mixed explicit transactions and failure rollback | Shared tests | Shared tests |
+| Enforced `write=False` transactions | SQLite `query_only`; managed writes fail before SQL | Native read-only transaction proof |
+| Uncertain commit/rollback handling | Fault-injected quarantine; close/reopen required | Shared state machine; configured proof tests |
 | Declared relationships, foreign keys, duplicate pairs | Shared tests | Shared tests |
 | Traversal, cycles, direction, budgets | Shared tests | Shared tests |
 | Scalar JSON predicates, missing/null and ordered pagination | Shared fixture | Same fixture |
@@ -17,7 +19,7 @@ PostgreSQL remains experimental, even where the shared tests pass.
 | Physical backup | SQLite backup API | Unsupported |
 | Logical import | SQLite restore fixtures | Mixed creation-only proof fixture |
 | Structural check | Integrity/FK, generated structures, declared constraints and migration checksums | Metadata version, migration checksums and table existence only |
-| External SQL | SQLite dialect and parameters | PostgreSQL dialect and Psycopg parameters |
+| External SQL | SQLite dialect and parameters; standalone explicit read intent | PostgreSQL dialect and Psycopg parameters; native read intent |
 | Runtime settings | Effective SQLite version/journal/synchronous/FK report; explicit WAL/DELETE selection | Unsupported |
 | Statistics and checkpoints | Explicit optimize/ANALYZE and structured WAL checkpoint results | Unsupported |
 
@@ -36,6 +38,16 @@ is unchanged. No automatic in-place physical upgrade is implemented.
 Raw SQL does not acquire managed document version increments. Direct external
 SQLite connections must enable foreign keys. Transactions have explicit
 ownership; backends do not promise equal isolation or writer concurrency.
+
+Standalone raw SQL remains write-capable by default. `write=False` selects an
+enforced read transaction, while SQL issued through a transaction handle inherits
+that transaction's mode. SQLite WAL qualification includes a two-connection proof
+that a read transaction keeps a stable snapshot without reserving the writer slot.
+
+A commit exception is not evidence that the transaction rolled back: the durable
+outcome may be unknown. Failed commit, rollback, or required transaction-mode cleanup
+quarantines the handle. Applications must close and reopen, inspect durable state,
+and resolve operation identity before retrying. MeldDB does not reconnect or retry.
 
 Writable WAL is additionally qualified against SQLite's WAL-reset fix. The current
 policy accepts SQLite 3.51.3+, the 3.50.7 backport line, and the 3.44.6 backport line.

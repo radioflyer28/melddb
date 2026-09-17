@@ -37,6 +37,28 @@ class TransactionError(MeldDBError):
     code = "transaction"
 
 
+class TransactionOutcomeError(TransactionError):
+    """A transaction boundary left the connection or durable outcome uncertain."""
+
+    code = "transaction_outcome"
+
+    def __init__(self, message, *, phase, outcome, initiating_error=None,
+                 backend_error=None):
+        super().__init__(message)
+        self.phase = phase
+        self.outcome = outcome
+        self.initiating_error = initiating_error
+        self.backend_error = backend_error
+
+
+class CommitError(TransactionOutcomeError):
+    code = "commit"
+
+
+class RollbackError(TransactionOutcomeError):
+    code = "rollback"
+
+
 class BusyError(MeldDBError):
     code = "busy"
 

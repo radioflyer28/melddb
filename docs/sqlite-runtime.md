@@ -93,3 +93,18 @@ no active MeldDB transaction. FULL, RESTART, and TRUNCATE can interfere with con
 writers or readers. MeldDB does not claim global exclusivity: applications should
 retain cooperative maintenance leases when needed and handle uncooperative processes
 through the structured result and translated errors.
+
+## Read-only transactions and uncertain outcomes
+
+`db.transaction(write=False)` and `db.sql(..., write=False)` use a deferred SQLite
+transaction with engine-enforced query-only state. Managed mutations are rejected
+before SQL; application-owned SQL is not classified by keyword and is instead rejected
+by SQLite if it mutates persistent state. The previous connection setting is restored
+when the transaction finishes, and maintenance verifies that transaction-mode cleanup
+has completed before issuing writable operations.
+
+An expected writer-lock conflict that leaves SQLite idle does not invalidate the
+connection. In contrast, a failed commit, failed rollback, or failed query-only cleanup
+quarantines the MeldDB handle. Only close remains available. Because a commit error can
+occur before or after durability, reopen the database and inspect application state
+before deciding whether an idempotent operation should be retried.

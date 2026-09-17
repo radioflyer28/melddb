@@ -11,5 +11,5 @@ def open(path, *, timeout=5, readonly=False, journal_mode=None):
     return Database(path, timeout=timeout, readonly=readonly, journal_mode=journal_mode)
 
 
-def connect(url, *, timeout=5):
-    return Database(url, postgres=True, timeout=timeout)
+def connect(url, *, timeout=5, readonly=False):
+    return Database(url, postgres=True, timeout=timeout, readonly=readonly)

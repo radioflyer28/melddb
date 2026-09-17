@@ -137,6 +137,9 @@ See [relationships](docs/relationships.md) and [migrations](docs/migrations.md).
 
 - Each standalone write commits atomically. Use `with db.transaction() as tx`
   to commit related operations together; exceptions roll everything back.
+- Use `with db.transaction(write=False) as tx` for an enforced read-only
+  snapshot. Managed writes fail before SQL and raw SQL mutations are rejected by
+  the backend; a failed operation still makes the transaction unusable.
 - Inside that block, use only `tx` and handles obtained from it. Ordinary `db`
   operations are rejected while the transaction is active.
 - A failed operation makes the transaction unusable, even if its exception is
@@ -145,6 +148,14 @@ See [relationships](docs/relationships.md) and [migrations](docs/migrations.md).
 - Nested transactions are rejected. Transaction handles expire after exit.
 - Each database handle is confined to its creating thread. Use separate handles
   for concurrent threads/processes; references cannot cross database handles.
+- `readonly=True` rejects write transactions and managed writes. SQLite also opens
+  the file read-only; PostgreSQL connections use native read-only transactions.
+- If commit or rollback cannot establish a safe outcome, MeldDB quarantines the
+  handle. Close it, reopen a new handle, inspect durable application state, and
+  only then decide whether an idempotent operation should be retried. MeldDB never
+  reconnects or retries automatically. `melddb.errors.CommitError` and
+  `RollbackError` expose `phase`, `outcome`, `initiating_error`, and
+  `backend_error` evidence for programmatic recovery decisions.
 - New SQLite databases use WAL when the loaded runtime is qualified, otherwise
   DELETE. Existing files preserve their mode unless `journal_mode="wal"` or
   `journal_mode="delete"` is explicit. Every connection requests FULL synchronous
@@ -171,13 +182,21 @@ import melddb
 with melddb.open("external.db") as db:
     db.sql("CREATE TABLE IF NOT EXISTS measurements (value INTEGER)")
     db.sql("INSERT INTO measurements VALUES (?)", (42,))
-    rows = db.sql("WITH m AS (SELECT MAX(value) AS n FROM measurements) SELECT n FROM m")
+    rows = db.sql(
+        "WITH m AS (SELECT MAX(value) AS n FROM measurements) SELECT n FROM m",
+        write=False,
+    )
     assert rows == [{"n": 42}]
     assert db.check()["ok"]
 ```
 
 SQL uses the driver's dialect and parameter syntax (`?` for SQLite, `%s` for
-PostgreSQL). It does not automatically increment managed document versions.
+PostgreSQL). Standalone `db.sql()` remains write-capable by default for compatibility;
+pass `write=False` to use one enforced read transaction without reserving SQLite's
+writer slot. `tx.sql()` inherits the enclosing transaction mode and takes no separate
+write flag. MeldDB does not classify arbitrary SQL as read-only: SQLite `query_only`
+and PostgreSQL native read-only transactions enforce the declaration. SQL does not
+automatically increment managed document versions.
 `db.inspect()` exposes physical table mappings. External tables remain accessible
 through SQL; obtaining a managed table handle does not adopt an external schema.
 
@@ -202,8 +221,10 @@ See [recovery procedures](docs/inspection-and-recovery.md) and
 
 Install its optional dependency from the checkout with
 `python -m pip install ".[postgres]"`. Use `melddb.connect(url)` with a PostgreSQL
-connection URL supplied by your application configuration. The same supported
-operations use this handle, but isolation and concurrency are backend-dependent.
+connection URL supplied by your application configuration, or
+`melddb.connect(url, readonly=True)` when every transaction must be read-only. The
+same supported operations use this handle, but isolation and concurrency are
+backend-dependent.
 
 PostgreSQL currently proves a subset: full schema evolution, equivalent structural
 checking, and general hosted cutover are not complete. Read the

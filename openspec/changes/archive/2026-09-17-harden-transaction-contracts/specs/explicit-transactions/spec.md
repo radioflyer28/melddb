@@ -1,9 +1,6 @@
-# explicit-transactions Specification
+# Spec Delta
 
-## Purpose
-Defines explicit connection and transaction ownership so application persistence remains visible, composable, and predictable.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Explicit atomic transaction scope
 The system SHALL provide a caller-owned transaction scope that atomically commits all successful operations, SHALL roll back the scope when an exception escapes, and SHALL fail closed when transaction start or finalization cannot establish a reusable connection state.
@@ -28,24 +25,6 @@ The system SHALL provide a caller-owned transaction scope that atomically commit
 - **WHEN** rollback raises while handling an operation or application failure
 - **THEN** the system reports the rollback failure, preserves the initiating failure for inspection, and rejects further operations through that database handle until it is closed
 
-### Requirement: Transaction handles enforce ownership
-The system SHALL reject nested transactions, use of an expired transaction handle, ordinary database operations while a transaction is active, and use of a database handle from a thread other than its creator.
-
-#### Scenario: Database handle used inside transaction
-- **WHEN** a caller invokes a database-owned operation while its explicit transaction is active
-- **THEN** the operation fails and the transaction cannot commit
-
-#### Scenario: Handle crosses a thread
-- **WHEN** a database handle is used outside its creating thread
-- **THEN** the system rejects the operation without performing database I/O
-
-### Requirement: Failed transactions cannot continue
-The system MUST mark an explicit transaction unusable after any operation in that transaction fails, even if application code catches the operation error inside the scope.
-
-#### Scenario: Caught operation error
-- **WHEN** an operation fails and its exception is caught before leaving the transaction block
-- **THEN** a later operation or commit is rejected and the transaction rolls back
-
 ### Requirement: Raw SQL remains explicit
 The system SHALL support parameterized driver-dialect SQL within standalone or explicit transaction scopes, SHALL let standalone calls declare read-only intent without changing the default write-capable behavior, and SHALL reject transaction-control SQL through that interface.
 
@@ -64,6 +43,8 @@ The system SHALL support parameterized driver-dialect SQL within standalone or e
 #### Scenario: Standalone SQL omits intent
 - **WHEN** a caller invokes standalone SQL without a read-only declaration
 - **THEN** the existing write-capable transaction behavior is preserved for compatibility
+
+## ADDED Requirements
 
 ### Requirement: Declared read-only scopes are enforced
 The system MUST enforce read-only database handles and `write=False` transaction scopes for both managed operations and raw SQL without relying on caller-supplied SQL classification.
