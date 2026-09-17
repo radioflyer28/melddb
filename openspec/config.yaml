@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  MeldDB is a dependency-light Python 3.12+ application-data library.
+  Its product rule is plain data in, plain data out, with all database I/O explicit.
+  SQLite is the supported implementation target; PostgreSQL remains experimental
+  until its published capability matrix is complete. Preserve application-owned SQL,
+  explicit transaction ownership, portable behavior in shared code, and backend-specific
+  SQL/transaction mechanics in adapters. Do not introduce ORM identity maps, tracked
+  objects, automatic flushing, or lazy loading. Use uv for development and verification.
+
+references:
+  - meld-platform-specs
+
+rules:
+  specs:
+    - State externally observable behavior and boundaries, not internal file layout.
+    - Distinguish supported SQLite behavior from experimental PostgreSQL behavior.
+    - Include scenarios for transaction ownership, failure behavior, and portability.
+  design:
+    - Preserve the dependency-free core and explicit-I/O product rule.
+  tasks:
+    - Include uv-based tests and Ruff verification for implementation changes.
+
+operations:
+  archive:
+    guidance:
+      - Keep historical evidence in docs; canonical specs should describe current behavior.
