@@ -1,7 +1,8 @@
 # Inspection and recovery
 
 `db.inspect()` returns logical-to-physical mappings, managed declarations,
-recorded migrations and external table names. `db.check()` checks the database
+recorded migrations and application-owned table names under `external_tables`.
+`db.check()` checks the database
 in one read transaction, returning `{"ok": bool, "errors": [...]}`. Neither
 operation repairs the inspected database or rewrites application records.
 
@@ -28,7 +29,8 @@ SQL equivalence. Column declaration order is preserved when comparing tables,
 since canonical metadata does not retain it. Extra application indexes are
 permitted; extra triggers on managed tables are reported because they can alter
 write behavior. External tables and their native logic are not audited against
-an application schema. The checker is not authentication against an attacker
+an application schema. Managed physical mappings are diagnostic, not stable
+foreign-key targets for application tables. The checker is not authentication against an attacker
 who can rewrite both the database and its metadata.
 
 PostgreSQL remains experimental: checks validate migration checksums and managed
@@ -54,9 +56,15 @@ application data or schema is changed.
 ## Physical backup and restoration
 
 `db.backup(new_path)` uses SQLite's online backup API while the source may be
-open in WAL mode. It includes external tables and native database objects.
+open in WAL mode. It captures the complete committed SQL database, including
+application-owned tables, records, indexes, views, triggers, constraints, and
+foreign-key or junction relationships.
 It cannot run inside a library-owned application transaction. PostgreSQL physical
 backup remains unsupported.
+
+The resulting file is a complete database snapshot, but not necessarily a complete
+application backup. Applications remain responsible for coordinating files,
+object-store payloads, secrets, or other external state with database recovery.
 
 The library writes a uniquely named temporary artifact beside the destination,
 checks integrity/references, switches the detached copy to DELETE journal mode,
@@ -82,4 +90,7 @@ Tests cover process interruption during copying and immediately before/after
 publication, live WAL backup, binary values/document versions/relationships,
 external data, independent restored writes, invalid structure rejection and
 destination races. These are process-crash tests, not a guarantee against every
-power-loss or filesystem failure. Logical export/import portability is S10.
+power-loss or filesystem failure. Managed logical export/import is a different
+artifact: it reports application-owned exclusions and does not recreate them.
+See [logical format and portability](logical-format.md) and the
+[application-owned SQL contract](application-owned-sql.md).

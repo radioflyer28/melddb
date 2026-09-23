@@ -80,6 +80,21 @@ and conversion behavior; it does not acquire SDK JSON validation or version
 increments. Managed metadata is private. `inspect()` exposes physical mappings
 for SQL inspection, not a permanently fixed physical schema.
 
+## Application-owned SQL
+
+MeldDB-managed migrations apply only to managed declarations. Ordinary
+application-owned tables, indexes, triggers, constraints, and migration-history
+tables remain under application control; MeldDB does not adopt or validate them
+against an application model. Applications may run their own DDL through explicit
+SQL and transaction scopes, but must choose and record their own migration ordering
+and compatibility policy. There is no generic external-table migration framework.
+
+Foreign keys and junction tables among application-owned objects use native
+database enforcement. Do not reference the private physical tables behind managed
+objects: mappings returned by `inspect()` are diagnostic and may change rather
+than stable application-schema targets. See
+[application-owned SQL tables](application-owned-sql.md).
+
 ## Recovery and boundary
 
 Process-crash tests terminate after trigger/index creation, metadata updates,
@@ -87,7 +102,7 @@ revision insertion, and commit. Reopening finds either the complete committed
 revision or the prior state, passes integrity/FK checks, and accepts a retry.
 These tests simulate process interruption, not all power-loss/filesystem failures.
 
-Renames, drops, type conversions, user-table adoption, and automatic reshaping
+Renames, drops, type conversions, application-table adoption, and automatic reshaping
 remain excluded. Storage format stays at version 2; unsupported metadata
 versions fail at open. Deep detection of externally altered managed objects
 belongs to S09 structural verification.

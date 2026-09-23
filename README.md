@@ -199,6 +199,9 @@ and PostgreSQL native read-only transactions enforce the declaration. SQL does n
 automatically increment managed document versions.
 `db.inspect()` exposes physical table mappings. External tables remain accessible
 through SQL; obtaining a managed table handle does not adopt an external schema.
+Applications own their external-table DDL, migrations, constraints, indexes, and
+triggers. Managed physical mappings are diagnostic and are not stable foreign-key
+targets. See the [application-owned SQL contract](docs/application-owned-sql.md).
 
 For an existing database, the installed CLI can inspect or create recovery artifacts:
 
@@ -209,11 +212,15 @@ melddb backup project.db project-backup.db
 melddb export project.db project-export.json
 ```
 
-Use fresh artifact destinations. A physical SQLite backup includes external tables;
-a logical export includes managed data and lists exclusions. Restore a backup by
-opening its new file and checking it. Import a logical export into a new or empty
-database with `db.import_into("project-export.json")`, then verify `db.check()` and
-your application records. Use the backup API instead of copying an active database.
+Use fresh artifact destinations. A physical SQLite backup contains the complete
+committed SQL database, including application-owned tables and native objects. It
+does not include external files or object-store payloads. A logical export contains
+only managed data and lists application-owned exclusions; importing it does not
+recreate application schema or records. Restore a backup by opening its new file
+and checking it. Import a logical export into a new or empty database with
+`db.import_into("project-export.json")`, then verify `db.check()` and separately
+provision or recover application-owned state. Use the backup API instead of copying
+an active database.
 See [recovery procedures](docs/inspection-and-recovery.md) and
 [logical transfer](docs/logical-format.md).
 
@@ -249,6 +256,7 @@ and [logical transfer](examples/logical_transfer.py).
 
 - [Beta guide and feedback checklist](docs/beta-testing.md)
 - [Queries and CRUD reference](docs/queries-and-crud.md)
+- [Application-owned SQL tables](docs/application-owned-sql.md)
 - [Relationships](docs/relationships.md) and [migrations](docs/migrations.md)
 - [Inspection and recovery](docs/inspection-and-recovery.md)
 - [Logical format and portability](docs/logical-format.md)

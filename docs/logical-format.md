@@ -4,7 +4,8 @@
 and edges in one read transaction. `db.import_into(path)` restores them into an
 empty database/schema in one write transaction. IDs, document versions and binary
 values are preserved. A failed import leaves no partly installed schema or data.
-There is no implicit overwrite, merge, or application-data conversion.
+There is no implicit overwrite, merge, or application-data conversion. This is a
+managed-data transfer format, not a complete database or application backup.
 
 ```console
 uv run python examples/logical_transfer.py
@@ -46,13 +47,16 @@ operation shape, order/uniqueness and agreement with the exported schema.
 Implicit collections need not have a creation revision. Constraints are installed
 after rows have been loaded and validated; endpoints precede relationships.
 
-`exclusions.external_tables` lists tables omitted from the artifact.
+`exclusions.external_tables` lists application-owned tables omitted from the artifact.
 `exclusions.native_objects` lists `{type, name}` descriptors for native indexes,
 views, triggers and functions not copied verbatim. Managed indexes and triggers
 are recreated from schema declarations; application native logic is not recreated.
 Earlier format-1 alpha files used a descriptive string for native exclusions;
-Python still accepts that representation. Physical backup is the mechanism for
-preserving external SQL objects exactly.
+Python still accepts that representation. Import does not recreate application-owned
+schema or records. SQLite physical backup is the mechanism for preserving the
+complete SQL database exactly; external files and object-store payloads still need
+application-level recovery coordination. See
+[application-owned SQL tables](application-owned-sql.md).
 
 ## Checksums and canonical bytes
 

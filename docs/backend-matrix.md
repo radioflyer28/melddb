@@ -16,10 +16,10 @@ PostgreSQL remains experimental, even where the shared tests pass.
 | Creation migrations | Shared tests | Shared tests |
 | Constraint and index evolution | SQLite tests | Rejected before schema mutation |
 | Raw SQL identity invariants | NOT NULL plus immutable-ID trigger | Primary key plus immutable-ID trigger |
-| Physical backup | SQLite backup API | Unsupported |
-| Logical import | SQLite restore fixtures | Mixed creation-only proof fixture |
+| Physical backup | Complete SQL database, including application-owned objects | Unsupported |
+| Logical import | Managed-only restore; application-owned exclusions stay absent | Mixed creation-only proof fixture; same managed-only boundary |
 | Structural check | Integrity/FK, generated structures, declared constraints and migration checksums | Metadata version, migration checksums and table existence only |
-| External SQL | SQLite dialect and parameters; standalone explicit read intent | PostgreSQL dialect and Psycopg parameters; native read intent |
+| Application-owned SQL | SQLite dialect, constraints, mixed transactions, and explicit read intent | PostgreSQL dialect and Psycopg parameters; experimental mixed-transaction proof |
 | Runtime settings | Effective SQLite version/journal/synchronous/FK report; explicit WAL/DELETE selection | Unsupported |
 | Statistics and checkpoints | Explicit optimize/ANALYZE and structured WAL checkpoint results | Unsupported |
 
@@ -38,6 +38,9 @@ is unchanged. No automatic in-place physical upgrade is implemented.
 Raw SQL does not acquire managed document version increments. Direct external
 SQLite connections must enable foreign keys. Transactions have explicit
 ownership; backends do not promise equal isolation or writer concurrency.
+Application-owned DDL, migrations, indexes, triggers, constraints, and relationships
+remain the application's responsibility. Physical managed mappings are diagnostic,
+not stable foreign-key targets. See [application-owned SQL tables](application-owned-sql.md).
 
 Standalone raw SQL remains write-capable by default. `write=False` selects an
 enforced read transaction, while SQL issued through a transaction handle inherits

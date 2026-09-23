@@ -17,26 +17,34 @@ The system SHALL report managed and external database structures and SHALL expos
 - **THEN** the result is limited to its documented proof subset and is not represented as SQLite-equivalent integrity checking
 
 ### Requirement: Fresh-destination SQLite backup
-The system SHALL create physical SQLite backups through the database backup mechanism, include application-owned SQL tables, and refuse to overwrite an existing destination.
+The system SHALL create physical SQLite backups through the database backup mechanism, SHALL include the complete committed database state including managed data, application-owned SQL tables, and native objects, and SHALL refuse to overwrite an existing destination.
 
 #### Scenario: Active WAL database is backed up
 - **WHEN** a caller backs up a live SQLite database to a fresh destination
-- **THEN** the destination contains a consistent database including committed WAL content and external tables
+- **THEN** the destination contains one consistent snapshot including committed WAL content, managed data, application-owned tables, and their native database objects
+
+#### Scenario: Application relationships are restored
+- **WHEN** a physical backup contains application-owned tables related by database-enforced foreign keys
+- **THEN** the restored database preserves those tables, rows, constraints, and relationships as part of the same database snapshot
 
 #### Scenario: Destination exists
 - **WHEN** the requested backup destination already exists
 - **THEN** the operation fails without replacing it
 
 ### Requirement: Versioned logical transfer
-The system SHALL export managed data in a checksummed, versioned logical format and import it only into a compatible new or empty destination after validation.
+The system SHALL export only managed data in a checksummed, versioned logical format, SHALL report application-owned tables and excluded native objects as outside that artifact, and SHALL import managed data only into a compatible new or empty destination after validation without recreating application-owned schema or records.
 
 #### Scenario: Logical artifact is corrupted
 - **WHEN** an artifact checksum or declared structure does not match its contents
 - **THEN** import fails before publishing partial managed data
 
 #### Scenario: External SQL is present
-- **WHEN** a database contains application-owned SQL tables
-- **THEN** logical export reports those tables as outside the managed logical artifact rather than silently claiming to include them
+- **WHEN** a database contains application-owned SQL tables or excluded native objects
+- **THEN** logical export reports them as exclusions and does not represent the artifact as a complete database backup
+
+#### Scenario: Managed logical artifact is imported
+- **WHEN** a valid logical artifact from a mixed database is imported into a compatible new or empty destination
+- **THEN** the managed data is restored and the application-owned schema and records remain absent for the application to provision or recover separately
 
 ### Requirement: Backend support is not overstated
 The system MUST identify physical backup as SQLite-only and PostgreSQL as experimental until full migration, structural checking, and cutover acceptance are complete.
