@@ -20,6 +20,7 @@ PostgreSQL remains experimental, even where the shared tests pass.
 | Logical import | Managed-only restore; application-owned exclusions stay absent | Mixed creation-only proof fixture; same managed-only boundary |
 | Structural check | Integrity/FK, generated structures, declared constraints and migration checksums | Metadata version, migration checksums and table existence only |
 | Application-owned SQL | SQLite dialect, constraints, mixed transactions, and explicit read intent | PostgreSQL dialect and Psycopg parameters; experimental mixed-transaction proof |
+| Transaction-scoped bulk SQL | Native `executemany`, single-pass input, aggregate row count, atomic rollback, no result rows | Psycopg `executemany`; same public contract in configured PostgreSQL 17/18 proof jobs |
 | Runtime settings | Effective SQLite version/journal/synchronous/FK report; explicit WAL/DELETE selection | Unsupported |
 | Statistics and checkpoints | Explicit optimize/ANALYZE and structured WAL checkpoint results | Unsupported |
 
@@ -41,6 +42,10 @@ ownership; backends do not promise equal isolation or writer concurrency.
 Application-owned DDL, migrations, indexes, triggers, constraints, and relationships
 remain the application's responsibility. Physical managed mappings are diagnostic,
 not stable foreign-key targets. See [application-owned SQL tables](application-owned-sql.md).
+Transaction-scoped bulk SQL changes only how repeated parameter sets reach the
+backend. It does not adopt those tables, own their migrations, or change the shared
+MeldDB/MeldStore metadata-provider responsibility boundary. MeldStore adoption and
+revision qualification remain in the MeldStore repository and release cycle.
 
 Standalone raw SQL remains write-capable by default. `write=False` selects an
 enforced read transaction, while SQL issued through a transaction handle inherits

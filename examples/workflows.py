@@ -42,8 +42,15 @@ def run(directory):
         db.sql(f'DELETE FROM "{physical}" WHERE sequence < ?', (5,))
         # 5. Existing SQL objects need no conversion.
         db.sql("CREATE TABLE IF NOT EXISTS external_metrics (value INTEGER)")
-        db.sql("INSERT INTO external_metrics VALUES (?)", (42,))
-        assert db.sql("WITH m AS (SELECT MAX(value) AS n FROM external_metrics) SELECT n FROM m") == [{"n": 42}]
+        with db.transaction() as tx:
+            summary = tx.sql_many(
+                "INSERT INTO external_metrics VALUES (?)", ((value,) for value in (40, 41, 42))
+            )
+        assert summary == {"parameter_sets": 3, "affected_rows": 3}
+        assert db.sql(
+            "WITH m AS (SELECT MAX(value) AS n FROM external_metrics) SELECT n FROM m",
+            write=False,
+        ) == [{"n": 42}]
         before = len(packages.find())
         try:
             with db.transaction() as tx:

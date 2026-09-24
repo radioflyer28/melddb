@@ -72,6 +72,35 @@ partial expression index; an EXPLAIN assertion protects against full scans.
 Single samples compare the checked API with simpler direct-driver implementations;
 they establish no universal latency guarantee.
 
+The transaction-scoped bulk SQL fixture separately compares 10,000 explicit
+`Transaction.sql()` calls, one `Transaction.sql_many()` call, and direct sqlite3
+`executemany` under equivalent local SQLite transaction and durability settings.
+It records environment, SQL-call count, row-count correctness, completion summary,
+and elapsed time in [bulk-sql-performance.json](bulk-sql-performance.json). Reproduce
+it with `uv run python validation/bulk_sql_performance.py`; the sample is local
+evidence and does not establish a universal speed ratio.
+
+## Transaction-scoped bulk SQL checkpoint
+
+The full SQLite plus PostgreSQL suites passed **518 tests with 4 documented skips**
+against each of disposable PostgreSQL 17 and PostgreSQL 18 on Windows/Python 3.12.10.
+The focused bulk-SQL suite passed **32 tests per server run**, including its shared
+SQLite cases. Both services used localhost-only ports and disposable schemas; no
+application database was involved.
+
+Coverage includes transaction-handle ownership and expiry, wrong-thread access,
+read-only rejection before iterable consumption, transaction-control rejection,
+single-pass ordered generators, empty input without backend execution, aggregate and
+unavailable row counts, mixed managed/application commits, and fail-closed iteration,
+binding, constraint, driver, `SELECT`, and DML `RETURNING` failures. Psycopg result-set
+metadata is walked to aggregate command row counts while detecting returned columns;
+returned rows are never silently discarded.
+
+The shared `metadata-provider-contract` remains unchanged because bulk SQL is a
+MeldDB-owned database mechanism. MeldStore must adopt and qualify the API separately
+against a pinned MeldDB revision; this checkpoint changes no blob-publication,
+payload-recovery, or application-schema ownership responsibility.
+
 CI includes OS/Python, PostgreSQL 17/18, clean artifacts, examples, the TypeScript
 reader and performance correctness. Configured jobs are not executed evidence.
 Process-crash tests do not simulate every power-loss/filesystem failure. See

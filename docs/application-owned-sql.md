@@ -54,6 +54,53 @@ check, trigger, or managed operation fails, the transaction cannot continue and
 the scope rolls back. Catch an operation error outside the transaction scope;
 MeldDB does not retry it.
 
+## Bulk parameterized SQL
+
+Use `Transaction.sql_many(statement, parameter_sets)` when one application-owned
+statement must be applied to many parameter sets:
+
+```python
+import melddb
+
+with melddb.open("measurements.db") as db:
+    db.sql(
+        "CREATE TABLE IF NOT EXISTS measurements("
+        "sequence INTEGER PRIMARY KEY, value REAL NOT NULL)"
+    )
+    with db.transaction() as tx:
+        result = tx.sql_many(
+            "INSERT INTO measurements VALUES (?,?)",
+            ((sequence, sequence / 10) for sequence in range(1000)),
+        )
+
+    assert result == {"parameter_sets": 1000, "affected_rows": 1000}
+```
+
+The method exists only on a live write-transaction handle; there is no
+`Database.sql_many()` convenience. It streams the ordered, single-pass iterable
+through one native driver bulk call without materializing, splitting, reordering,
+or retrying it. An empty iterable returns `{"parameter_sets": 0,
+"affected_rows": 0}` without executing the statement. For non-empty input,
+`parameter_sets` is the number consumed successfully and `affected_rows` is the
+driver's non-negative aggregate row count, or `None` when the driver does not
+provide one.
+
+The statement must not produce rows. `SELECT` and DML with `RETURNING` are rejected;
+MeldDB does not discard those rows or provide per-parameter status. Transaction and
+connection-control SQL is rejected under the same boundary as `sql()`. Any statement,
+iteration, binding, constraint, driver, or result-boundary failure poisons the
+transaction and rolls back the complete scope, including parameter sets already
+attempted by the driver.
+
+Applications own chunk boundaries. Multiple `sql_many()` calls can share one
+explicit transaction when a source should be processed in bounded chunks, but
+those chunks still share one commit and rollback outcome. Committing each chunk
+requires a separate explicit transaction. SQL and placeholders remain native to
+the selected backend: use `?` for SQLite and `%s` for PostgreSQL.
+
+The application-owned bulk example in `examples/workflows.py` runs in the CI
+OS/Python matrix.
+
 SQL remains driver-dialect SQL. SQLite uses `?` parameters; PostgreSQL uses `%s`.
 Keep portable application behavior in application code and use backend-specific
 DDL where the database dialects differ.

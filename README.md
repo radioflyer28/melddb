@@ -194,7 +194,10 @@ SQL uses the driver's dialect and parameter syntax (`?` for SQLite, `%s` for
 PostgreSQL). Standalone `db.sql()` remains write-capable by default for compatibility;
 pass `write=False` to use one enforced read transaction without reserving SQLite's
 writer slot. `tx.sql()` inherits the enclosing transaction mode and takes no separate
-write flag. MeldDB does not classify arbitrary SQL as read-only: SQLite `query_only`
+write flag. For repeated writes, `tx.sql_many(statement, parameter_sets)` streams one
+ordered parameter iterable through one backend bulk call and returns submitted and
+affected-row counts. It requires an explicit write transaction and rejects statements
+that produce rows. MeldDB does not classify arbitrary SQL as read-only: SQLite `query_only`
 and PostgreSQL native read-only transactions enforce the declaration. SQL does not
 automatically increment managed document versions.
 `db.inspect()` exposes physical table mappings. External tables remain accessible

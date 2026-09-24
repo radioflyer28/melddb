@@ -4,6 +4,7 @@ import json
 import threading
 import uuid
 from contextlib import contextmanager
+from itertools import chain
 
 from .backend import Backend
 from .errors import (
@@ -30,7 +31,7 @@ def physical(name):
     return "ad_" + hashlib.sha256(text(name).encode()).hexdigest()[:32]
 
 
-def _raw_sql(scope, statement, params):
+def _validate_raw_sql(statement):
     # Raw SQL is an escape hatch, not a transaction-control API.
     import re
     cleaned = re.sub(r"/\*.*?\*/|--[^\n]*", " ", statement, flags=re.S).strip()
@@ -40,6 +41,10 @@ def _raw_sql(scope, statement, params):
         "VACUUM", "PRAGMA", "ATTACH", "DETACH",
     }:
         raise UnsupportedError("Use the library transaction/configuration interfaces")
+
+
+def _raw_sql(scope, statement, params):
+    _validate_raw_sql(statement)
     rows, _ = scope._db._backend.execute(statement, params, raw=True)
     return rows
 
@@ -67,6 +72,28 @@ class Transaction(Scope):
     def sql(self, statement, params=()):
         with self._operation():
             return _raw_sql(self, statement, params)
+
+    def sql_many(self, statement, parameter_sets):
+        with self._operation(write=True):
+            _validate_raw_sql(statement)
+            iterator = iter(parameter_sets)
+            try:
+                first = next(iterator)
+            except StopIteration:
+                return {"parameter_sets": 0, "affected_rows": 0}
+
+            consumed = 0
+
+            def counted_parameter_sets():
+                nonlocal consumed
+                for params in chain((first,), iterator):
+                    consumed += 1
+                    yield params
+
+            affected = self._db._backend.execute_many(
+                statement, counted_parameter_sets(), raw=True
+            )
+            return {"parameter_sets": consumed, "affected_rows": affected}
 
     def transaction(self):
         self._failed = True

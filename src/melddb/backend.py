@@ -251,23 +251,66 @@ class Backend:
             cur.close()
             return rows, count
         except Exception as exc:
+            self._raise_translated(exc)
+
+    def execute_many(self, sql, parameter_sets, *, raw=False):
+        cur = None
+        try:
             if self.pg:
-                import psycopg
-                if not isinstance(exc, psycopg.Error):
-                    raise
-                code = exc.sqlstate or ""
-                kind = (AlreadyExistsError if code == "23505" else
-                        ConstraintError if code.startswith("23") else
-                        BusyError if code in ("55P03", "40001", "40P01") else
-                        ConnectionError if code.startswith("08") else ValidationError)
+                statement = sql if raw else pg_sql(sql)
+                cur = self.conn.cursor()
+                # Asking Psycopg to retain returned rows makes RETURNING detectable
+                # instead of silently discarding database output.
+                cur.executemany(statement, parameter_sets, returning=True)
             else:
-                if not isinstance(exc, sqlite3.Error):
-                    raise
-                code = getattr(exc, "sqlite_errorcode", 0)
-                kind = (AlreadyExistsError if code in (1555, 2067) else
-                        ConstraintError if isinstance(exc, sqlite3.IntegrityError) else
-                        BusyError if code & 255 in (5, 6) else ValidationError)
-            raise kind(str(exc)) from exc
+                cur = self.conn.executemany(sql, parameter_sets)
+            if self.pg:
+                total = 0
+                known = True
+                while True:
+                    if cur.description is not None:
+                        raise UnsupportedError(
+                            "Bulk SQL does not support statements that produce rows"
+                        )
+                    count = cur.rowcount
+                    if count is None or count < 0:
+                        known = False
+                    else:
+                        total += count
+                    if not cur.nextset():
+                        break
+                return total if known else None
+            if cur.description is not None:
+                raise UnsupportedError(
+                    "Bulk SQL does not support statements that produce rows"
+                )
+            count = cur.rowcount
+            return count if count is not None and count >= 0 else None
+        except Exception as exc:
+            self._raise_translated(exc)
+        finally:
+            if cur is not None:
+                with suppress(Exception):
+                    cur.close()
+
+    def _raise_translated(self, exc):
+        if self.pg:
+            import psycopg
+            if not isinstance(exc, psycopg.Error):
+                raise exc
+            code = exc.sqlstate or ""
+            kind = (AlreadyExistsError if code == "23505" else
+                    ConstraintError if code.startswith("23") else
+                    BusyError if code in ("55P03", "40001", "40P01") else
+                    ConnectionError if code.startswith("08") else ValidationError)
+        else:
+            if not isinstance(exc, sqlite3.Error):
+                raise exc
+            code = getattr(exc, "sqlite_errorcode", 0)
+            kind = (AlreadyExistsError if code in (1555, 2067) else
+                    ConstraintError if isinstance(exc, sqlite3.IntegrityError) else
+                    BusyError if code & 255 in (5, 6) else ValidationError)
+        raise kind(str(exc)) from exc
 
     def begin(self, write=True):
         if not self.pg and not write:

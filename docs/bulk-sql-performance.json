@@ -1,0 +1,35 @@
+{
+  "environment": {
+    "python": "3.12.10",
+    "sqlite": "3.49.1",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel"
+  },
+  "records": 10000,
+  "workloads": {
+    "transaction_sql_row_by_row": {
+      "seconds": 0.036781399976462126,
+      "sql_calls": 10000,
+      "rows": 10000,
+      "summary": {
+        "parameter_sets": 10000,
+        "affected_rows": 10000
+      }
+    },
+    "transaction_sql_many": {
+      "seconds": 0.01160239998716861,
+      "sql_calls": 1,
+      "rows": 10000,
+      "summary": {
+        "parameter_sets": 10000,
+        "affected_rows": 10000
+      }
+    },
+    "sqlite3_executemany": {
+      "seconds": 0.011661000084131956,
+      "sql_calls": 1,
+      "rows": 10000
+    }
+  },
+  "scope": "Single local SQLite sample with one explicit write transaction per workload, identical rows, DELETE journal mode, FULL synchronous writes, and native parameter binding. Timings are local evidence only, not universal performance guarantees."
+}
