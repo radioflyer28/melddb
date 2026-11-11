@@ -63,3 +63,10 @@ Local verification on November 11, 2026, Python 3.13.15:
 
 The exact published revision and downstream live results are recorded in
 MeldStore's `docs/postgresql-provider-verification.md` after consumer qualification.
+
+Corrected provider revision: `bda3ca95fb6f5431e521162087bec97009074840`, published
+on `codex/postgresql-provider-contracts`. The unchanged MeldStore fixture passed
+all 61 tests with zero skips on PostgreSQL 17.11 (run
+`20261111T172146Z-db6077`). It verified installed Git provenance against the
+declared dependency. The shared safety contract is synced; owning changes remain
+active. This follow-up records evidence without changing the tested provider code.
