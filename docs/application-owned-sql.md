@@ -54,6 +54,10 @@ check, trigger, or managed operation fails, the transaction cannot continue and
 the scope rolls back. Catch an operation error outside the transaction scope;
 MeldDB does not retry it.
 
+Raw and bulk SQL cannot take over transaction or session control. See the
+[provider control and disconnect contract](postgresql-provider-contracts.md)
+for command rejection, preserved SQL dialect behavior, and uncertain outcomes.
+
 ## Bulk parameterized SQL
 
 Use `Transaction.sql_many(statement, parameter_sets)` when one application-owned

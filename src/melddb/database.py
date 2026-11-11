@@ -31,20 +31,53 @@ def physical(name):
     return "ad_" + hashlib.sha256(text(name).encode()).hexdigest()[:32]
 
 
-def _validate_raw_sql(statement):
-    # Raw SQL is an escape hatch, not a transaction-control API.
-    import re
-    cleaned = re.sub(r"/\*.*?\*/|--[^\n]*", " ", statement, flags=re.S).strip()
-    first = cleaned.split(None, 1)[0].upper() if cleaned else ""
-    if first in {
+def _validate_raw_sql(statement, *, postgres=False):
+    # Inspect only the leading command, never rewrite literals or routine bodies.
+    # Drivers enforce one executable statement. This is an ownership guard for
+    # trusted application SQL, not a sandbox for privileged database routines.
+    if not isinstance(statement, str):
+        raise ValidationError("SQL statement must be text")
+    i, length = 0, len(statement)
+    while i < length:
+        if statement[i].isspace() or statement[i] in ";\ufeff":
+            i += 1
+        elif statement.startswith("--", i):
+            i += 2
+            while i < length and statement[i] not in ("\r\n" if postgres else "\n"):
+                i += 1
+        elif statement.startswith("/*", i):
+            i += 2
+            depth = 1
+            while i < length and depth:
+                if postgres and statement.startswith("/*", i):
+                    depth += 1
+                    i += 2
+                elif statement.startswith("*/", i):
+                    depth -= 1
+                    i += 2
+                else:
+                    i += 1
+            if depth:
+                raise ValidationError("Unterminated leading SQL comment")
+        else:
+            break
+    start = i
+    while i < length and (statement[i].isalnum() or statement[i] in "_$"):
+        i += 1
+    first = statement[start:i].upper()
+    controls = {
         "BEGIN", "COMMIT", "ROLLBACK", "END", "SAVEPOINT", "RELEASE",
         "VACUUM", "PRAGMA", "ATTACH", "DETACH",
-    }:
+    }
+    if postgres:
+        controls |= {"ABORT", "START", "SET", "RESET", "DISCARD",
+                     "PREPARE", "EXECUTE", "DEALLOCATE"}
+    if first in controls:
         raise UnsupportedError("Use the library transaction/configuration interfaces")
 
 
 def _raw_sql(scope, statement, params):
-    _validate_raw_sql(statement)
+    _validate_raw_sql(statement, postgres=scope._db._backend.pg)
     rows, _ = scope._db._backend.execute(statement, params, raw=True)
     return rows
 
@@ -75,7 +108,7 @@ class Transaction(Scope):
 
     def sql_many(self, statement, parameter_sets):
         with self._operation(write=True):
-            _validate_raw_sql(statement)
+            _validate_raw_sql(statement, postgres=self._db._backend.pg)
             iterator = iter(parameter_sets)
             try:
                 first = next(iterator)

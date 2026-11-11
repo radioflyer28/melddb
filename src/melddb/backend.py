@@ -302,7 +302,12 @@ class Backend:
             kind = (AlreadyExistsError if code == "23505" else
                     ConstraintError if code.startswith("23") else
                     BusyError if code in ("55P03", "40001", "40P01") else
-                    ConnectionError if code.startswith("08") else ValidationError)
+                    ConnectionError if (
+                        code.startswith("08") or
+                        code in {"57P01", "57P02", "57P03", "57P04", "57P05", "25P03"} or
+                        (not code and isinstance(exc, (psycopg.OperationalError,
+                                                     psycopg.InterfaceError)))
+                    ) else ValidationError)
         else:
             if not isinstance(exc, sqlite3.Error):
                 raise exc
