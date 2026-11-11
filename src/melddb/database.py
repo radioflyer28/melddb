@@ -106,6 +106,11 @@ class Transaction(Scope):
         with self._operation():
             return _raw_sql(self, statement, params)
 
+    def validate_constraints(self):
+        """Check pending constraints without committing; see backend timing contract."""
+        with self._operation(write=True):
+            self._db._backend.validate_constraints()
+
     def sql_many(self, statement, parameter_sets):
         with self._operation(write=True):
             _validate_raw_sql(statement, postgres=self._db._backend.pg)

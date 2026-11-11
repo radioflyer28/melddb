@@ -253,6 +253,13 @@ class Backend:
         except Exception as exc:
             self._raise_translated(exc)
 
+    def validate_constraints(self):
+        if self.pg:
+            # Deliberately stays immediate until this transaction ends.
+            self.execute("SET CONSTRAINTS ALL IMMEDIATE", raw=True)
+        elif self.execute("PRAGMA foreign_key_check")[0]:
+            raise ConstraintError("Pending foreign key constraint violation")
+
     def execute_many(self, sql, parameter_sets, *, raw=False):
         cur = None
         try:
