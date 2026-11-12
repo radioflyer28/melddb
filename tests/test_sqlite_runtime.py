@@ -85,7 +85,11 @@ def test_memory_database_rejects_file_journal_selection():
         melddb.open(":memory:", journal_mode="delete")
 
 
-def test_runtime_report_is_effective_plain_data(tmp_path):
+@pytest.mark.parametrize(
+    ("version", "wal_available"), [((3, 50, 4), False), ((3, 51, 3), True)]
+)
+def test_runtime_report_is_effective_plain_data(tmp_path, monkeypatch, version, wal_available):
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", version)
     with melddb.open(tmp_path / "runtime.db", journal_mode="delete") as db:
         report = db.sqlite_runtime()
         assert report["backend"] == "sqlite"
@@ -96,8 +100,9 @@ def test_runtime_report_is_effective_plain_data(tmp_path):
         assert report["synchronous"] == 2
         assert report["foreign_keys"] is True
         assert set(report["capabilities"]) == {"wal", "statistics", "checkpoint"}
+        assert report["capabilities"]["wal"]["available"] is wal_available
         report["capabilities"]["wal"]["available"] = "changed"
-        assert db.sqlite_runtime()["capabilities"]["wal"]["available"] is False
+        assert db.sqlite_runtime()["capabilities"]["wal"]["available"] is wal_available
 
 
 def test_memory_runtime_reports_file_capabilities_unavailable():
