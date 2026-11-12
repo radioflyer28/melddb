@@ -19,3 +19,6 @@ fixture passed all 61 tests with no skips on 2026-11-11. The shared
 metadata-provider contract. See `docs/postgresql-provider-contracts.md` for
 upstream results and MeldStore's `docs/postgresql-provider-verification.md`
 for exact-pin downstream evidence. No merge, release or archive is included.
+
+Closeout 2026-11-12: completed tasks and canonical sync verified; archived after
+MeldStore's integrated PostgreSQL/RustFS qualification (217 passed, zero skipped).
