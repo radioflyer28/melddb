@@ -1,6 +1,6 @@
 # Backend contract during the alpha
 
-SQLite is the intended supported backend; release qualification is still open.
+SQLite is the supported backend; package release decisions remain separate.
 PostgreSQL remains experimental, even where the shared tests pass.
 
 | Operation | SQLite alpha | PostgreSQL proof |

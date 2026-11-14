@@ -1,25 +1,66 @@
 # MeldDB future roadmap
 
-Preserved from the implementation plan and product discussion on 2026-09-10.
-This is a direction and decision record, not authorization to resume development,
-change release gates, configure a remote, or publish packages.
+Updated 2026-11-13; retains the original product discussion from 2026-09-10.
+This is a direction and decision record, not authorization to publish packages.
 
 ## Current checkpoint
 
 S01-S10 are recorded in [the implementation plan](implementation-plan.md).
-S11 has a local v0.1.0rc1 candidate and Windows/Linux qualification evidence;
-macOS Python 3.12-3.14 qualification remains outstanding. Gate B passed for the
-candidate API; Gate C remains open. SQLite is not yet designated supported and
-PostgreSQL remains experimental. Keep the repository local and work paused until
-requested. See [the handoff](next-session.md) and
-[release qualification](release-qualification.md) for evidence and artifact hashes.
+SQLite is the supported backend; PostgreSQL remains an experimental portability
+proof until its capability matrix is complete. The runtime, application-owned
+SQL, bulk execution, PostgreSQL transaction safety, and pending-constraint
+validation contracts have been implemented, synced, archived, and pushed.
+
+Main commit `3ab9343c9b40e1c2f142a7af80c654ba9f69e42d` passed all 12
+[CI jobs](https://github.com/radioflyer28/melddb/actions/runs/43265227157),
+including Windows/Linux/macOS Python 3.12-3.14 and PostgreSQL 17/18 proof tests.
+MeldStore v0.1.0rc3 qualifies the exact provider revision
+`01e27441d7512f85663c8a86986429d62a69bff9`; later MeldDB commits contain
+spec archival and a test correction, with no production source differences.
+This does not announce a new MeldDB package release or close every historical
+release gate. [S11 release qualification](release-qualification.md) remains the
+record of that earlier candidate and its artifact hashes.
+
+## Next work with MeldStore
+
+1. MeldStore owns the implemented `qualify-postgresql-representative-workloads`
+   milestone: synthetic 100-file Parquet workloads, 100-300 MB per file, SQL
+   relationships, concurrent clients, migration and backup/recovery measurements.
+   Compare direct SQLite, MeldDB SQLite and MeldDB PostgreSQL with the same
+   workload. The full Windows/PostgreSQL 17/RustFS comparison passed on
+   2026-11-13: 20.04 GB, 300,000 relationships, all three adapters, concurrency,
+   migration and recovery, including both SQLite cutovers. Its measured
+   consumer follow-up is bounded batch loading in `Store.find()`: repeated
+   per-record reads/schema checks amplify SQL calls, especially over PostgreSQL.
+   This can use existing public SQL; it does not require a new provider contract.
+   Its release qualification does not promote MeldDB's whole adapter.
+2. MeldDB's next provider feature should strengthen PostgreSQL structural
+   inspection. Current checks cover metadata version, migration checksums and
+   table existence; first define and test detection of missing or incompatible
+   managed columns, constraints and indexes. Keep application-owned objects
+   outside managed-schema ownership and report unsupported checks explicitly.
+3. Use that inspection foundation before expanding managed-schema migration.
+   Propose and qualify each additional capability against the backend matrix.
+
+A smaller provider cleanup candidate is replacing the per-connection JSON loader
+closure with a stable module-level loader while preserving portable-integer
+validation. Psycopg warns about closures and declines to cache them; that warning
+alone does not establish a measured leak. Qualify any future provider change
+separately before changing MeldStore's exact dependency pin.
+
+Coordinate provider findings through the `meld-platform` workset containing
+MeldDB, MeldStore and the local-only `meld-platform-specs` store. Implementation
+and workload evidence belong in their owning repositories. Change the shared
+contract when provider/consumer guarantees change; benchmark results alone do
+not require a shared contract amendment or a new provider pin.
 
 ## Governing product contract
 
 Plain data in, plain data out; all database I/O is explicit. Every capability must
 simplify a demonstrated workflow without hidden persistence behavior. Keep the
 core installation free of third-party runtime dependencies. MeldDB remains a
-standalone application-data library; Cacheness is a prospective consumer.
+standalone application-data library; MeldStore is its generic blob-store consumer.
+The Cacheness discussion below preserves the historical motivation.
 
 ## Original post-release milestones
 
@@ -35,12 +76,16 @@ and acceptance plans must be established when each milestone is started.
 | 5 | Evaluate PGlite | Reuse the PostgreSQL behavior contract where supported; do not depend on future native bindings. |
 | 6 | Evaluate advanced capabilities | Async, broader schemas, undirected/parallel edges, synchronization, and graph extensions require demonstrated workloads. |
 
-The next release step remains obtaining macOS evidence and reviewing the candidate.
-There is no automatic package publication. Current PostgreSQL limitations are in
+macOS CI evidence is now available; package publication remains a separate
+release decision. Current PostgreSQL limitations are in
 [the capability matrix](backend-matrix.md), including schema evolution,
 structural checks, and the limited logical-import proof.
 
 ## External consumer: Cacheness using MeldDB
+
+Historical discussion: the generic blob-store implementation is now MeldStore,
+which owns blob lifecycle and ordinary application SQL integration. The following
+proposals are preserved as background, not outstanding MeldDB implementation tasks.
 
 Cacheness began as a caching library and evolved into a dual-role cache and blob
 store. Its newer local checkout is an unfinished refactor, not a settled contract.
